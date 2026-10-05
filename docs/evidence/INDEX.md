@@ -17,6 +17,7 @@ This master index aggregates all qualification manifests across slices **S0 thro
 | **S6** | Clustering & Consensus | Pairwise similarity, complete-link clustering, clone resistance | Q11, Q15 | [Q11-Q15-clustering-manifest.md](Q11-Q15-clustering-manifest.md) | PASS |
 | **S7** | Account Advisory | Drawdown headroom ceilings, downward lot rounding, Telegram adapter | Q12, Q08 | [Q12-Q08-advisory-manifest.md](Q12-Q08-advisory-manifest.md) | PASS |
 | **S8** | Synthetic Qualification | High-leverage integration, 6-task battery, load envelopes, recovery | Q07, Q14, Q16–Q18 | [Q07-Q14-Q16-Q17-Q18-synthetic-system-manifest.md](Q07-Q14-Q16-Q17-Q18-synthetic-system-manifest.md) | PASS |
+| **S9** | Research Promotion | Adaptive quality weights (B3), regime conditioning (B4), promotion gates | Q15 | [Q15-research-promotion-manifest.md](Q15-research-promotion-manifest.md) | PASS |
 
 ---
 
@@ -69,5 +70,5 @@ This master index aggregates all qualification manifests across slices **S0 thro
 Across both repositories, all automated checks and tests pass with zero failures:
 - **Rust Observation Tracker:** 115 tests passed (`make check-rs`), 0 warnings.
 - **Inherited Python Tracker:** 79 tests passed (`make test`).
-- **Expert Ensemble Application:** 33 tests passed (`uv run pytest`), ruff clean, type check clean.
-- **Total Workspace Test Count:** **227 tests passing**.
+- **Expert Ensemble Application:** 37 tests passed (`uv run pytest`), ruff clean, type check clean.
+- **Total Workspace Test Count:** **231 tests passing**.
