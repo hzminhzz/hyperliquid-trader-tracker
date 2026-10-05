@@ -64,8 +64,7 @@ A module is a responsibility, not necessarily a package or deployment. Keep the 
 
 ## Storage and repository boundaries
 
-The tracker remains an upstream-tracked fork. Keep Rust infrastructure changes local to observation and export. The new Python engine belongs in a separate application repository when implementation reaches S3; do not disguise it as the inherited `src/tracker/*.py`. This fork temporarily holds the cross-system specification; migrate each document's ownership once the engine repository exists, leaving pointers rather than duplicate specifications.
-
+The tracker remains an upstream-tracked fork. Keep Rust infrastructure changes local to observation and export. The new Python engine belongs in a separate application repository when implementation reaches S3 (`/home/quant/dev/hyperliquid-expert-ensemble`); do not disguise it as the inherited `src/tracker/*.py`. This fork temporarily holds the cross-system specification; migrate each document's ownership once the engine repository exists, leaving pointers rather than duplicate specifications.
 Use the tracker's SQLite store for a durable receipt/checkpoint/outbox design with one logical writer. Python initially uses its own SQLite database for projections, consumer offsets, policies, and decisions. Do not have two processes write the same database. Export sealed historical partitions to Parquet for DuckDB/Polars research. PostgreSQL is an upgrade for measured concurrent-write or multi-host needs, not a prerequisite for an expert count.
 
 **This revises the earlier mandatory-PostgreSQL proposal.** The important commitments are transactional ownership and replay, not a database brand. Keep engine repositories/storage independent of the tracker implementation behind the published contract.

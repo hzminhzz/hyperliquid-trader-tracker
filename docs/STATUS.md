@@ -55,4 +55,6 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S2 persistence engine completed:** see [docs/evidence/Q05-Q06-Q08-persistence-manifest.md](evidence/Q05-Q06-Q08-persistence-manifest.md) for Q05, Q06, Q08 acceptance evidence. Durable receipts ledger, economic dedup index, atomic checkpoint/outbox transitions, canonical event envelope, consistent snapshot pagination, bounded ordered tail stream, and retention pruning are implemented and verified across 194 tests.
 
-Implementation frontier advances to **S3** in [plan.md](../plan.md): give the agent eyes before advanced intelligence (Python inspection, projection/replay substrate, and evidence manifests).
+**S3 projection and inspection engine completed:** see [docs/evidence/Q09-Q14-Q16-projection-manifest.md](evidence/Q09-Q14-Q16-projection-manifest.md) for Q09, Q14, Q16 acceptance evidence. The separate Python application repository is initialized at `/home/quant/dev/hyperliquid-expert-ensemble` with its own independent SQLite database (`projection.db`), consumer offset tracking, isolated as-known versus restated replay runner, job checkpoints, and compact JSON inspection commands (`inspect capabilities`, `inspect system`, `inspect changes`, `evidence lookup`), qualified across 200 tests.
+
+Implementation frontier advances to **S4** in [plan.md](../plan.md): deliver the first complete target explanation (Python posture/ensemble and read-only explanation handlers).
