@@ -15,6 +15,7 @@ pub mod pnl;
 pub mod registry;
 pub mod resolve;
 pub mod retry;
+pub mod scheduler;
 pub mod state;
 pub mod telegram_setup;
 pub mod watchlist;

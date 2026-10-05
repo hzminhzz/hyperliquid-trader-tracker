@@ -234,6 +234,63 @@ pub struct CompletedTrade {
     pub source: String,
 }
 
+/// Coverage and synchronization status of a tracked wallet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CoverageState {
+    #[default]
+    Unseeded,
+    Seeded,
+    Reconciling,
+    Degraded,
+    Quarantined,
+    KnownFlat,
+}
+
+/// Observed account equity from Hyperliquid clearinghouseState.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountEquity {
+    pub address: String,
+    pub account_value: Decimal,
+    pub total_raw_usd: Option<Decimal>,
+    pub total_margin_used: Option<Decimal>,
+    pub observed_at: DateTime<Utc>,
+}
+
+/// Parse account equity from a clearinghouseState response.
+pub fn parse_account_equity(
+    address: &str,
+    raw: &Value,
+    observed_at: DateTime<Utc>,
+) -> Result<Option<AccountEquity>, Error> {
+    let summary = raw
+        .get("marginSummary")
+        .or_else(|| raw.get("crossMarginSummary"));
+    let Some(summary) = summary.and_then(Value::as_object) else {
+        return Ok(None);
+    };
+    let account_val = match to_decimal(summary.get("accountValue"))? {
+        Some(val) => val,
+        None => return Ok(None),
+    };
+    let total_raw = to_decimal(summary.get("totalRawUsd"))?;
+    let total_margin = to_decimal(summary.get("totalMarginUsed"))?;
+    Ok(Some(AccountEquity {
+        address: address.to_string(),
+        account_value: account_val,
+        total_raw_usd: total_raw,
+        total_margin_used: total_margin,
+        observed_at,
+    }))
+}
+
+/// Typed mark price observation with provenance timestamp.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MarkObservation {
+    pub coin: String,
+    pub px: Decimal,
+    pub observed_at: DateTime<Utc>,
+}
+
 // Rust-only regressions (models.py has no test file): pin the to_decimal contract the
 // review relied on — exponent notation parses via FromStr alone, whitespace is tolerated
 // like Python's Decimal constructor, and special values still reject to None.

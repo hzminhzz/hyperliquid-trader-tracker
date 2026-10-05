@@ -24,6 +24,7 @@ use futures_util::{SinkExt, StreamExt};
 use rust_decimal::Decimal;
 use serde_json::{Map, Value, json};
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async_with_config};
@@ -32,10 +33,12 @@ use tokio_util::sync::CancellationToken;
 use crate::book::{InMemoryBook, SeenTids};
 use crate::config::Settings;
 use crate::hl_client::InfoClient;
+use crate::models::CompletedTrade;
 use crate::notifier::{EventContext, Notifier};
 use crate::pnl::{ClosedPnlResolver, with_authoritative_pnl};
 use crate::registry::Registry;
 use crate::resolve::{perp_coins_from_meta, resolve_deltas};
+use crate::state::LiveEvent;
 
 // PORT NOTE: the Python `ws: Any` parameters become the concrete split halves of the one
 // socket type this module ever opens (fixed decision: `_run_connection` splits the socket —
@@ -52,6 +55,17 @@ type WsSink = SplitSink<WsStream, Message>;
 type ConnError = Box<dyn std::error::Error + Send + Sync>;
 type ConnResult<T> = Result<T, ConnError>;
 
+#[derive(Debug, Clone)]
+struct DispatchedEvent {
+    event: LiveEvent,
+    closed_trade: Option<CompletedTrade>,
+    leverage: Option<i64>,
+    mark: Option<Decimal>,
+    tx_hash: Option<String>,
+    avg_entry: Option<Decimal>,
+    recipients: HashMap<i64, String>,
+}
+
 /// Owns the WebSocket connection, live marks, and per-trade dispatch.
 pub struct Listener {
     // PORT NOTE: leading-underscore privacy (`_settings`, …) → non-pub fields, same order as
@@ -66,7 +80,7 @@ pub struct Listener {
     book: Arc<Mutex<InMemoryBook>>,
     // PORT NOTE: app.py hands the Notifier to the Listener and keeps no other reference —
     // owned by value (the Notifier itself only needs &self).
-    notifier: Notifier,
+    notifier: Arc<Notifier>,
     // PORT NOTE: `client: InfoClient` (Protocol) → Arc<dyn InfoClient> (fixed decision).
     client: Arc<dyn InfoClient>,
     pnl: Option<ClosedPnlResolver>,
@@ -80,6 +94,8 @@ pub struct Listener {
     // Field `stop` and method `stop()` share a name — legal in Rust (separate namespaces;
     // book.rs `leverage` precedent).
     stop: CancellationToken,
+    dispatch_tx: mpsc::Sender<DispatchedEvent>,
+    dispatch_rx: Arc<tokio::sync::Mutex<Option<mpsc::Receiver<DispatchedEvent>>>>,
 }
 
 impl Listener {
@@ -99,6 +115,8 @@ impl Listener {
         // reads happen before `settings` moves into Self (Python read through the shared ref).
         let coins = settings.live_coins_list(); // empty = all perps
         let seen = SeenTids::new(settings.tid_dedup_maxlen);
+        let (dispatch_tx, rx) = mpsc::channel(10_000);
+        let notifier = Arc::new(notifier);
         Self {
             settings,
             registry,
@@ -110,6 +128,8 @@ impl Listener {
             marks: HashMap::new(),
             seen,
             stop: CancellationToken::new(),
+            dispatch_tx,
+            dispatch_rx: Arc::new(tokio::sync::Mutex::new(Some(rx))),
         }
     }
 
@@ -131,8 +151,38 @@ impl Listener {
     }
 
     // PORT NOTE: &mut self — the recv path mutates `marks`/`seen` directly (Python mutated
-    // through the shared self on one event loop).
     pub async fn run(&mut self) {
+        let rx_opt = self.dispatch_rx.lock().await.take();
+        if let Some(mut rx) = rx_opt {
+            let notifier = Arc::clone(&self.notifier);
+            let pnl = self.pnl.clone();
+            let stop = self.stop.clone();
+            tokio::spawn(async move {
+                while !stop.is_cancelled() {
+                    tokio::select! {
+                        _ = stop.cancelled() => break,
+                        item = rx.recv() => {
+                            let Some(item) = item else { break; };
+                            let event = with_authoritative_pnl(
+                                item.event,
+                                item.closed_trade.as_ref(),
+                                pnl.as_ref(),
+                            )
+                            .await;
+                            let ctx = EventContext {
+                                event: &event,
+                                leverage: item.leverage,
+                                mark: item.mark,
+                                tx_hash: item.tx_hash.as_deref(),
+                                trade: item.closed_trade.as_ref(),
+                                avg_entry: item.avg_entry,
+                            };
+                            notifier.dispatch(&ctx, &item.recipients).await;
+                        }
+                    }
+                }
+            });
+        }
         self.connection_loop().await;
     }
 
@@ -360,15 +410,13 @@ impl Listener {
             // decision, book.rs narrowing; JSON `true` was isinstance-int in Python but is
             // rejected here — unobservable on real payloads, pnl.rs precedent).
             let tid = trade.get("tid").and_then(Value::as_i64);
+            let coin = trade.get("coin").and_then(Value::as_str).unwrap_or("");
             if let Some(tid) = tid
-                && self.seen.check_and_add(tid)
+                && self.seen.check_and_add_scoped(coin, tid)
             {
                 continue;
             }
             for fill in fills {
-                // PORT NOTE: GIL-free — lock scope: the book guard is a temporary that drops
-                // at the end of this statement, before the awaits below. Keyword args to
-                // ingest flattened to positional (book.rs shape).
                 let result = self.book.lock().expect("book mutex poisoned").ingest(
                     &fill.address,
                     &fill.coin,
@@ -379,7 +427,6 @@ impl Listener {
                 if result.events.is_empty() {
                     continue;
                 }
-                // Fan out to every subscriber of this wallet, each with their own label.
                 let recipients = self
                     .registry
                     .lock()
@@ -388,48 +435,23 @@ impl Listener {
                 if recipients.is_empty() {
                     continue;
                 }
-                // PORT NOTE: `for event in result.events` moves the Vec out of result
-                // (partial move) — result.closed_trade stays borrowable for the PnL swap.
+                let leverage = self
+                    .book
+                    .lock()
+                    .expect("book mutex poisoned")
+                    .leverage(&fill.address, &fill.coin);
+                let mark = self.marks.get(&fill.coin).copied();
+                let avg_entry = result.state.as_ref().map(|s| s.avg_entry);
                 for event in result.events {
-                    // A close swaps in the exchange's own realized PnL when it resolves in
-                    // time; the local estimate stays as the fallback. This awaits on the recv
-                    // path — bounded by attempts x delay, and closes are rare.
-                    // PORT NOTE: `event = await with_authoritative_pnl(...)` rebinding → let
-                    // shadowing; trade/resolver pass as Option<&_> (pnl.rs shape).
-                    let event = with_authoritative_pnl(
+                    let _ = self.dispatch_tx.try_send(DispatchedEvent {
                         event,
-                        result.closed_trade.as_ref(),
-                        self.pnl.as_ref(),
-                    )
-                    .await;
-                    // PORT NOTE: Python evaluated the leverage lookup as a dispatch argument,
-                    // i.e. AFTER the pnl await — the book lock is taken here (its own
-                    // statement, so the guard cannot ride into dispatch's await) to preserve
-                    // both that ordering and the lock-scope rule.
-                    let leverage = self
-                        .book
-                        .lock()
-                        .expect("book mutex poisoned")
-                        .leverage(&event.address, &event.coin);
-                    // PORT NOTE: `self._marks.get(event.coin)` returned Decimal | None →
-                    // copied() Option<Decimal> (Decimal is Copy).
-                    let mark = self.marks.get(&event.coin).copied();
-                    // The card carries the fill's tx hash (for a View TX link) and, on a
-                    // close, the completed round-trip (entry/exit/PnL/duration). The notifier
-                    // edits this subscriber-set's live card in place instead of sending anew.
-                    // The next state carries the blended avg entry (unchanged by a reduce, so it
-                    // is the basis a reduce's ROI is booked against). None on an exact close —
-                    // the close card reads entry from the completed trade instead.
-                    let avg_entry = result.state.as_ref().map(|s| s.avg_entry);
-                    let ctx = EventContext {
-                        event: &event,
+                        closed_trade: result.closed_trade.clone(),
                         leverage,
                         mark,
-                        tx_hash: fill.hash.as_deref(),
-                        trade: result.closed_trade.as_ref(),
+                        tx_hash: fill.hash.clone(),
                         avg_entry,
-                    };
-                    self.notifier.dispatch(&ctx, &recipients).await;
+                        recipients: recipients.clone(),
+                    });
                 }
             }
         }

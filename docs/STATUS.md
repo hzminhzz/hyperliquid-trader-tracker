@@ -49,6 +49,8 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 ## Current frontier
 
-**S0 baseline qualification completed:** see [docs/evidence/Q01-baseline-manifest.md](evidence/Q01-baseline-manifest.md) for the verified evidence manifest (Q01). The `upstream` remote (`KonScanner/hyperliquid-trader-tracker`) is configured and pinned at `ffff331aa0f52e299ee995e2c96246c1253712a7` with zero divergence. Both Rust checks (`make check-rs`, 97 tests) and Python checks (`make check`, 79 tests) pass. Inspected gaps G01–G11 are classified with reproducible test coverage in `tests/test_baseline_gaps.py` and `src/tracker/book.rs`.
+**S0 baseline qualification completed:** see [docs/evidence/Q01-baseline-manifest.md](evidence/Q01-baseline-manifest.md) for the verified evidence manifest (Q01).
 
-Implementation frontier advances to **S1** in [plan.md](../plan.md): deepen observation module semantics, composite trade identity, monotonic revisions, and explicit snapshot validation.
+**S1 observation module completed:** see [docs/evidence/Q02-Q04-observation-manifest.md](evidence/Q02-Q04-observation-manifest.md) for Q02–Q04 acceptance evidence. Composite trade identities (`(coin, tid)`), monotonic revisions and generation protection, strict snapshot validation, `ReconcileOutcome`, separate desired wallet universe, scoped equity and mark observations, decoupled ingestion via mpsc, and a shared weighted `RequestScheduler` (1,200 weight/min, 200 recovery reserve) are implemented and verified across 186 tests.
+
+Implementation frontier advances to **S2** in [plan.md](../plan.md): durable observation owner, receipts ledger, checkpoints, and outbox persistence.

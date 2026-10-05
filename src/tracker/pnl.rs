@@ -63,6 +63,7 @@ fn to_ms(ts: DateTime<Utc>) -> i64 {
 }
 
 /// Fetches the exchange's realized PnL for a leg that just closed.
+#[derive(Clone)]
 pub struct ClosedPnlResolver {
     // PORT NOTE: leading-underscore privacy (`_client`, `_attempts`, `_retry_delay_s`) →
     // non-pub fields, same order as __init__. `client: InfoClient` (Protocol) is held as
