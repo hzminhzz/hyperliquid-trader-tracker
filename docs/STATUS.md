@@ -65,4 +65,6 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S7 account advice completed:** see [docs/evidence/Q12-Q08-advisory-manifest.md](evidence/Q12-Q08-advisory-manifest.md) for Q12, Q08 acceptance evidence. Explicit account rulebook, drawdown headroom calculations, downward lot rounding, UNSIZED fallbacks, action delta derivation under holdings uncertainty, and meaningful-change notification filtering are verified across 220 tests.
 
-Implementation frontier advances to **S8** in [plan.md](../plan.md): qualify the synthetic system (integrated shadow, recovery, load, and agent ergonomics qualification).
+**S8 synthetic system qualification completed:** see [docs/evidence/Q07-Q14-Q16-Q17-Q18-synthetic-system-manifest.md](evidence/Q07-Q14-Q16-Q17-Q18-synthetic-system-manifest.md) and master index [docs/evidence/INDEX.md](evidence/INDEX.md) for Q07, Q14, Q16, Q17, Q18 acceptance evidence. The high-leverage integration fixture (Rust publication to Python consumption), real bounded source comparisons, deterministic replay isolation, the complete 6-task agent ergonomics battery, staged load and soak capacity evaluation (10/100/1,000 wallets meeting < 1.0s p95 budget), and incident recovery/runbooks are verified across 227 tests.
+
+Implementation frontier advances to **S9** in [plan.md](../plan.md): optional quality/regime research and controlled promotion (out-of-critical-path optional learning).
