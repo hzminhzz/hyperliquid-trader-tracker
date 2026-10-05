@@ -63,4 +63,6 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S6 similarity and clustering completed:** see [docs/evidence/Q11-Q15-clustering-manifest.md](evidence/Q11-Q15-clustering-manifest.md) for Q11, Q15 acceptance evidence. Aligned posture similarity features, flat-flat exclusions, support diagnostics, deterministic complete-link clustering, clone-resistant hierarchical aggregation (B2), and research promotion gates are verified across 215 tests.
 
-Implementation frontier advances to **S7** in [plan.md](../plan.md): produce bounded account advice, not assumed copying (account-aware advisory output, risk limits, lot rounding, and optional Telegram notification adapter).
+**S7 account advice completed:** see [docs/evidence/Q12-Q08-advisory-manifest.md](evidence/Q12-Q08-advisory-manifest.md) for Q12, Q08 acceptance evidence. Explicit account rulebook, drawdown headroom calculations, downward lot rounding, UNSIZED fallbacks, action delta derivation under holdings uncertainty, and meaningful-change notification filtering are verified across 220 tests.
+
+Implementation frontier advances to **S8** in [plan.md](../plan.md): qualify the synthetic system (integrated shadow, recovery, load, and agent ergonomics qualification).

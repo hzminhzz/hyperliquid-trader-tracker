@@ -225,3 +225,4 @@ tracker.db-shm
 # Claude/Other files
 .claude
 .agents
+.workspace/
