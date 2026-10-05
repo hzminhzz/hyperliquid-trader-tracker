@@ -14,6 +14,7 @@
 // PORT NOTE: `logger = logging.getLogger(__name__)` disappears — `tracing` macros are
 // free-standing and carry the module path automatically (same as notifier.rs / pnl.rs).
 
+use chrono::Utc;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -33,6 +34,7 @@ use tokio_util::sync::CancellationToken;
 use crate::book::{InMemoryBook, SeenTids};
 use crate::config::Settings;
 use crate::hl_client::InfoClient;
+use crate::ledger::{ObservationLedger, PositionCheckpoint, TransitionParams};
 use crate::models::CompletedTrade;
 use crate::notifier::{EventContext, Notifier};
 use crate::pnl::{ClosedPnlResolver, with_authoritative_pnl};
@@ -96,6 +98,7 @@ pub struct Listener {
     stop: CancellationToken,
     dispatch_tx: mpsc::Sender<DispatchedEvent>,
     dispatch_rx: Arc<tokio::sync::Mutex<Option<mpsc::Receiver<DispatchedEvent>>>>,
+    ledger: Option<Arc<ObservationLedger>>,
 }
 
 impl Listener {
@@ -130,7 +133,13 @@ impl Listener {
             stop: CancellationToken::new(),
             dispatch_tx,
             dispatch_rx: Arc::new(tokio::sync::Mutex::new(Some(rx))),
+            ledger: None,
         }
+    }
+
+    pub fn with_ledger(mut self, ledger: Arc<ObservationLedger>) -> Self {
+        self.ledger = Some(ledger);
+        self
     }
 
     /// Signal a graceful shutdown (the reconnect loop exits).
@@ -416,6 +425,19 @@ impl Listener {
             {
                 continue;
             }
+            let mut receipt_id_opt = None;
+            if let Some(ledger) = &self.ledger {
+                let source_key = format!("{coin}:{tid:?}");
+                if let Ok((r_id, is_dup)) = ledger
+                    .append_receipt("ws:trades", &source_key, trade, Utc::now())
+                    .await
+                {
+                    if is_dup {
+                        continue;
+                    }
+                    receipt_id_opt = Some(r_id);
+                }
+            }
             for fill in fills {
                 let result = self.book.lock().expect("book mutex poisoned").ingest(
                     &fill.address,
@@ -426,6 +448,37 @@ impl Listener {
                 );
                 if result.events.is_empty() {
                     continue;
+                }
+                if let Some(ledger) = &self.ledger {
+                    let cp = result.state.as_ref().map(|s| PositionCheckpoint {
+                        address: s.address.clone(),
+                        coin: s.coin.clone(),
+                        szi: s.szi,
+                        direction: s.direction,
+                        avg_entry: s.avg_entry,
+                        opened_at: s.opened_at,
+                        last_added_at: s.last_added_at,
+                        realized_pnl: s.realized_pnl,
+                        revision: 1,
+                        generation: 1,
+                        coverage: "Seeded".to_string(),
+                        updated_at: Utc::now(),
+                    });
+                    let _ = ledger
+                        .commit_transition(TransitionParams {
+                            receipt_id: receipt_id_opt.unwrap_or(0),
+                            wallet_id: fill.address.clone(),
+                            coin: fill.coin.clone(),
+                            checkpoint: cp,
+                            event_kind: "POSITION_CHANGE".to_string(),
+                            instrument_id: format!("hyperliquid:mainnet:perp:default:{}", fill.coin),
+                            event_time: fill.ts,
+                            received_at: Utc::now(),
+                            before_rev: 0,
+                            after_rev: 1,
+                            payload: json!({"delta": fill.delta.to_string(), "px": fill.px.to_string()}),
+                        })
+                        .await;
                 }
                 let recipients = self
                     .registry

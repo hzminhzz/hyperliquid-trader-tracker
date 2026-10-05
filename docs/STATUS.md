@@ -51,6 +51,8 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S0 baseline qualification completed:** see [docs/evidence/Q01-baseline-manifest.md](evidence/Q01-baseline-manifest.md) for the verified evidence manifest (Q01).
 
-**S1 observation module completed:** see [docs/evidence/Q02-Q04-observation-manifest.md](evidence/Q02-Q04-observation-manifest.md) for Q02–Q04 acceptance evidence. Composite trade identities (`(coin, tid)`), monotonic revisions and generation protection, strict snapshot validation, `ReconcileOutcome`, separate desired wallet universe, scoped equity and mark observations, decoupled ingestion via mpsc, and a shared weighted `RequestScheduler` (1,200 weight/min, 200 recovery reserve) are implemented and verified across 186 tests.
+**S1 observation module completed:** see [docs/evidence/Q02-Q04-observation-manifest.md](evidence/Q02-Q04-observation-manifest.md) for Q02–Q04 acceptance evidence. Composite trade identities, monotonic revisions, strict snapshot validation, `ReconcileOutcome`, separate desired wallet universe, scoped equity and mark observations, decoupled ingestion via mpsc, and a shared weighted `RequestScheduler` are verified across 186 tests.
 
-Implementation frontier advances to **S2** in [plan.md](../plan.md): durable observation owner, receipts ledger, checkpoints, and outbox persistence.
+**S2 persistence engine completed:** see [docs/evidence/Q05-Q06-Q08-persistence-manifest.md](evidence/Q05-Q06-Q08-persistence-manifest.md) for Q05, Q06, Q08 acceptance evidence. Durable receipts ledger, economic dedup index, atomic checkpoint/outbox transitions, canonical event envelope, consistent snapshot pagination, bounded ordered tail stream, and retention pruning are implemented and verified across 194 tests.
+
+Implementation frontier advances to **S3** in [plan.md](../plan.md): give the agent eyes before advanced intelligence (Python inspection, projection/replay substrate, and evidence manifests).

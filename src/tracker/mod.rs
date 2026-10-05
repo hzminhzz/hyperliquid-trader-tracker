@@ -8,6 +8,7 @@ pub mod db;
 pub mod enrich;
 pub mod exceptions;
 pub mod hl_client;
+pub mod ledger;
 pub mod listener;
 pub mod models;
 pub mod notifier;
