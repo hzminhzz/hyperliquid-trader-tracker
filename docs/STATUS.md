@@ -61,4 +61,6 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S5 safe control completed:** see [docs/evidence/Q13-Q16-Q18-control-manifest.md](evidence/Q13-Q16-Q18-control-manifest.md) for Q13, Q16, Q18 acceptance evidence. Typed change proposals, immutable plans, scoped authority roles, idempotency receipts, prompt injection defenses, revision drift rejection, job cancellation, compact handoffs, and knowledge retention runbooks are verified across 211 tests.
 
-Implementation frontier advances to **S6** in [plan.md](../plan.md): test independence rather than count wallets (deterministic similarity/clustering, clone resistance, and hierarchical aggregation).
+**S6 similarity and clustering completed:** see [docs/evidence/Q11-Q15-clustering-manifest.md](evidence/Q11-Q15-clustering-manifest.md) for Q11, Q15 acceptance evidence. Aligned posture similarity features, flat-flat exclusions, support diagnostics, deterministic complete-link clustering, clone-resistant hierarchical aggregation (B2), and research promotion gates are verified across 215 tests.
+
+Implementation frontier advances to **S7** in [plan.md](../plan.md): produce bounded account advice, not assumed copying (account-aware advisory output, risk limits, lot rounding, and optional Telegram notification adapter).
