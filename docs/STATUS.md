@@ -59,4 +59,6 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S4 target explanation completed:** see [docs/evidence/Q10-Q14-explanation-manifest.md](evidence/Q10-Q14-explanation-manifest.md) for Q10, Q14 acceptance evidence. Declared eligibility states, fixed-scale normalization, equal-budget consensus (B1) without survivor amplification, posture uncertainty bounds, causal change categories, contribution ledgers, and read-only target/blocker explanations are verified across 204 tests.
 
-Implementation frontier advances to **S5** in [plan.md](../plan.md): make control safe and cheap (operations facade, typed plans, expected revisions, grants, receipts, and bounded job control).
+**S5 safe control completed:** see [docs/evidence/Q13-Q16-Q18-control-manifest.md](evidence/Q13-Q16-Q18-control-manifest.md) for Q13, Q16, Q18 acceptance evidence. Typed change proposals, immutable plans, scoped authority roles, idempotency receipts, prompt injection defenses, revision drift rejection, job cancellation, compact handoffs, and knowledge retention runbooks are verified across 211 tests.
+
+Implementation frontier advances to **S6** in [plan.md](../plan.md): test independence rather than count wallets (deterministic similarity/clustering, clone resistance, and hierarchical aggregation).
