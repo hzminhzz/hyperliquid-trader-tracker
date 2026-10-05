@@ -57,4 +57,6 @@ The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/fo
 
 **S3 projection and inspection engine completed:** see [docs/evidence/Q09-Q14-Q16-projection-manifest.md](evidence/Q09-Q14-Q16-projection-manifest.md) for Q09, Q14, Q16 acceptance evidence. The separate Python application repository is initialized at `/home/quant/dev/hyperliquid-expert-ensemble` with its own independent SQLite database (`projection.db`), consumer offset tracking, isolated as-known versus restated replay runner, job checkpoints, and compact JSON inspection commands (`inspect capabilities`, `inspect system`, `inspect changes`, `evidence lookup`), qualified across 200 tests.
 
-Implementation frontier advances to **S4** in [plan.md](../plan.md): deliver the first complete target explanation (Python posture/ensemble and read-only explanation handlers).
+**S4 target explanation completed:** see [docs/evidence/Q10-Q14-explanation-manifest.md](evidence/Q10-Q14-explanation-manifest.md) for Q10, Q14 acceptance evidence. Declared eligibility states, fixed-scale normalization, equal-budget consensus (B1) without survivor amplification, posture uncertainty bounds, causal change categories, contribution ledgers, and read-only target/blocker explanations are verified across 204 tests.
+
+Implementation frontier advances to **S5** in [plan.md](../plan.md): make control safe and cheap (operations facade, typed plans, expected revisions, grants, receipts, and bounded job control).
