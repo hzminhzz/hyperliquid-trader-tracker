@@ -1,6 +1,10 @@
-# hyperliquid-trader-tracker — Design (decisions locked 2026-07-01)
+# Inherited tracker design (upstream design dated 2026-07-01)
 
-Full API reference: [hyperliquid-api-map.md](./hyperliquid-api-map.md). This doc is the build spec.
+> **Historical reference, not the fork's current build specification.** The user-approved KonScanner foundation remains mandatory, but the notification-only, memory-state decisions below are superseded for the planned ensemble by [SYSTEM.md](SYSTEM.md), [CONTRACTS.md](CONTRACTS.md), and [the implementation plan](../plan.md). [STATUS.md](STATUS.md) distinguishes actual implementation from those targets.
+>
+> In particular: production Rust is authoritative for the inherited runtime; the Python module table below is historical. Persistent observation/checkpoint/outbox work is planned, Telegram becomes an optional adapter, and the wallet universe must not depend on chat subscribers. Capacity, startup completeness, and bare-`tid` deduplication statements below require the qualifications in STATUS and CONTRACTS. The historical score is not independent qualification evidence.
+
+Inherited API reference: [hyperliquid-api-map.md](./hyperliquid-api-map.md). The remainder is preserved to explain upstream choices, not to override the fork's target contracts.
 
 ## Mission
 Watch a list of Hyperliquid wallets (up to **1k+**) and **push a Telegram notification** whenever a watched wallet's perp position changes — distinguishing *"Started trade"* (new position) from *"Added to position"* (increase), plus reduce/close/flip with realized PnL.

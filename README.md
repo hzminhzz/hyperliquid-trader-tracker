@@ -1,5 +1,17 @@
 # hyperliquid-trader-tracker
 
+## Fork direction: agent-operable expert ensemble
+
+This is the upstream-tracked KonScanner infrastructure fork for a user-curated trader ensemble. The existing Rust tracker remains the observation foundation; a separate Python engine is planned for normalization, correlation, consensus, and account-aware advice.
+
+**Current versus planned:** [docs/STATUS.md](docs/STATUS.md) identifies inspected capabilities and gaps. The durable event interface, expert engine, and `copytrade` agent commands are design targets, not implemented features at the baseline. No real trade execution is authorized by this project plan.
+
+**Start here:** [AGENTS.md](AGENTS.md) routes agent work; [CONTEXT-MAP.md](CONTEXT-MAP.md) maps ownership; [docs/SYSTEM.md](docs/SYSTEM.md) describes the complete operating model; [plan.md](plan.md) gives dependency-aware implementation slices and acceptance gates.
+
+The upstream documentation below describes inherited behavior. Its capacity statements are not a load qualification of this fork, and its memory-only storage design will change only through the documented durability work.
+
+## Inherited tracker
+
 A real-time **Hyperliquid wallet tracker / whale watcher** as a **multi-tenant Telegram bot**,
 written in **Rust**: anyone can message it, follow any wallet trading perps on
 [Hyperliquid](https://hyperliquid.xyz), and get a DM the moment that wallet opens, scales into,
@@ -16,7 +28,7 @@ and ROI. Useful for copy trading, whale watching, and monitoring your own accoun
 - **Stores nothing but the watchlists.** Positions live in memory and are rebuilt from the chain
   (`clearinghouseState`) on every start; the SQLite `tracker.db` holds only `(chat_id, address, label)`.
 
-Design + rationale: [docs/DESIGN.md](docs/DESIGN.md).
+Inherited design + rationale: [docs/DESIGN.md](docs/DESIGN.md). Current fork target: [docs/SYSTEM.md](docs/SYSTEM.md).
 
 ## How it works
 

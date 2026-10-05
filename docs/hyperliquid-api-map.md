@@ -1,6 +1,19 @@
 # Mapping the Public, Open Hyperliquid API — and a Design for a Wallet-Tracking Push Notifier
 
-**Prepared:** 2026-07-01 · **Mode:** deep research · **Scope owner:** hyperliquid-trader-tracker
+**Prepared:** 2026-07-01 · **Mode:** inherited upstream research · **Scope owner:** hyperliquid-trader-tracker
+
+## Fork corrections and authority (2026-10-06)
+
+This report is historical source research, not proof that the running tracker implements every guarantee described below. The fork's current authority is [CONTRACTS.md](CONTRACTS.md); actual code findings are in [STATUS.md](STATUS.md).
+
+- Use the documented composite economic identity, scoped by environment/instrument/time and `tid`, not bare `tid`. Retain per-wallet projections for both watched counterparties. Source IDs are not ordered recovery cursors.
+- Snapshot reconciliation can restore a current quantity without restoring missed history. Buffering plus response timestamps alone does not prove a gap-free snapshot/stream boundary.
+- Bounded seeding concurrency is not a shared weighted rate limiter. Requests, retry loops, and response-size weights all consume the same applicable budget. 'Unlimited wallets' and 'effectively free' are not capacity guarantees.
+- Do not skip a snapshot merely because it is a snapshot: decide whether its identities/cut were already consumed. Initial snapshots are not new-live alerts.
+- Use inclusive overlapping time pagination with duplicate handling and a progress check. Advancing beyond the last timestamp can miss fills sharing that timestamp; historical availability limits can make a gap unrecoverable.
+- Wallet equity, leverage, fees, and funding require appropriately scoped observations; the public trade feed alone is not a complete accounting feed. Default-dex metadata does not imply all HIP-3 or spot coverage.
+
+Re-probe material provider assumptions during S0. The remaining text records upstream research and rationale; it does not override these corrections.
 
 ---
 
@@ -155,7 +168,7 @@ Request: `{"type":"clearinghouseState","user":"0x…","dex":""}` · **weight 2**
 }
 ```
 
-**All numeric fields are strings** → parse to `Decimal` (no float drift). `leverage.value` is the `{leverage}x` in the notification; `leverage.type` distinguishes cross/isolated. This is the object the sibling project already normalizes in [`build_position`](../../hyperdash-crawl/src/hyperdash_cohorts/models.py) (`leverage.get("value")`).
+Money, price, and quantity fields represented as strings should be parsed as decimals; integer fields such as timestamps and leverage retain their own types. `leverage.value` is the `{leverage}x` in the notification; `leverage.type` distinguishes cross/isolated. The historical report referenced `build_position` in the sibling `hyperdash-crawl` project, which is not bundled here. The fork's current parser is [models.rs](../src/tracker/models.rs).
 
 ---
 
@@ -187,7 +200,7 @@ Request: `{"type":"userFills","user":"0x…"}` (REST) or WS subscription `{"type
 
 **Snapshot semantics (critical for a *notifier*).** The first `userFills`/`webData2`/`userFundings` WS message has `isSnapshot: true` — a backfill of *recent history*. A notifier **must skip the snapshot batch** (and re-dedupe by `tid` after any reconnect) or it will re-notify old fills on every (re)connect. `dir` is advisory: the docs publish only examples, not an exhaustive enumeration, so branch on `startPosition`/`side`, not on `dir` text.
 
-**Pagination (REST `userFillsByTime`):** ≤2000 rows/response; time-walk by advancing `startTime` past the last row's `time`; only the 10,000 most-recent fills are retained.
+**Pagination (REST `userFillsByTime`):** the documented response/history limits are bounded. Use an inclusive overlapping cursor, composite deduplication, and a progress check; do not advance past an equal-timestamp boundary without proving completeness. If the provider cannot expose all rows at a saturated boundary, record the gap rather than claiming a complete backfill. Re-verify current limits during qualification.
 
 ---
 

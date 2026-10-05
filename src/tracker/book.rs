@@ -457,6 +457,46 @@ mod tests {
         assert!(!seen.check_and_add(3)); // evicts tid 1 (oldest)
         assert!(!seen.check_and_add(1)); // 1 was evicted, so it's "new" again
     }
+
+    #[test]
+    fn test_g01_seen_tids_unscoped_dedup_cross_coin() {
+        // G01: SeenTids only dedupes on scalar i64 tid. Cross-coin or cross-wallet trades
+        // sharing a tid are dropped as duplicates because dedup lacks (coin, address) scope.
+        let mut seen = SeenTids::new(10);
+        let tid = 999_999;
+        assert!(
+            !seen.check_and_add(tid),
+            "first trade on coin A must be accepted"
+        );
+        assert!(
+            seen.check_and_add(tid),
+            "second trade sharing tid is dropped as duplicate"
+        );
+    }
+
+    #[test]
+    fn test_g05_fill_epoch_resets_on_reseed() {
+        // G05: reseed_wallet calls drop_wallet, which drops the wallet's epoch counter
+        // instead of maintaining a monotonically increasing revision across reseeds.
+        let mut book = InMemoryBook::new();
+        ingest(&mut book, "0xa", "BTC", "1", "100");
+        assert_eq!(book.fill_epoch("0xa"), 1);
+
+        let seeded = vec![seed_state_from_row(
+            "0xa",
+            "BTC",
+            d("1"),
+            Some(d("100")),
+            ts(),
+        )];
+        let applied = book.reseed_wallet("0xa", seeded, HashMap::new(), None);
+        assert!(applied);
+        assert_eq!(
+            book.fill_epoch("0xa"),
+            0,
+            "baseline reseed_wallet resets fill_epoch to 0 via drop_wallet"
+        );
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
