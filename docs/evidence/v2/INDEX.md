@@ -11,7 +11,7 @@ This index separates engineering/descriptive evidence from historical predictive
 | V22 | #14 | [V22-independence-manifest.md](V22-independence-manifest.md) | DESCRIPTIVE | PASS |
 | V23 | #15 | [V23-conviction-manifest.md](V23-conviction-manifest.md) | DESCRIPTIVE | PASS |
 | V24 | #16 | [V24-ensemble-evidence-manifest.md](V24-ensemble-evidence-manifest.md) | DESCRIPTIVE | PASS |
-| V25 | #17 | pending | ENGINEERING | PENDING |
+| V25 | #17 | [V25-outcome-ledger-manifest.md](V25-outcome-ledger-manifest.md) | ENGINEERING | PASS |
 | V26 | #18 | pending | HISTORICAL_PREDICTIVE | PENDING |
 | V27 | #19 | pending | HISTORICAL_PREDICTIVE | PENDING |
 | V28 | #20 | pending | HISTORICAL_PREDICTIVE | PENDING |
