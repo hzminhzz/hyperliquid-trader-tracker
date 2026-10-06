@@ -25,11 +25,13 @@ Agents supervise the slow operating/research loop. Deterministic code owns inges
 |---|---|---|---|
 | L0 | Observation ledger | What did we receive, from where, and when? | Reconnects, identities, receipts, persistence, coverage |
 | L1 | Account view | What position and equity can we support now? | Reducer, snapshot races, corrections, scope, reconciliation |
-| L2 | Expert posture | What comparable exposure does this expert express? | Eligibility, normalization, lagged scale, reliability |
-| L3 | Independent support | How much of this information is redundant? | Similarity estimation, clustering, membership stability |
-| L4 | Consensus target | What does the ensemble imply, and why did it change? | Contributions, fixed budgets, aggregation, hysteresis |
-| L5 | Advisory target | What does that imply for this account under explicit constraints? | Contract mapping, risk model, existing risk, account rules |
-| L6 | Proposal and receipt | What may the operator change, and what actually happened? | Authorization, preconditions, idempotency, verification |
+| L2 | Wallet evidence | What exposure and new intent does this expert express? | Raw bias, bounded influence, concentration, state/flow, age, reliability |
+| L3 | Independent evidence | How much of this information is redundant? | Similarity support, clustering, membership stability, effective breadth |
+| L4 | Ensemble evidence | What do independent experts hold and what new information did they reveal? | State, flow, relative conviction, cohort divergence, uncertainty |
+| L5 | Predictive evidence | Which descriptive evidence is actually qualified for forecasting? | Frozen promoted features, outcome support, calibration/latency/cost assumptions |
+| L6 | Trade signal | What account-independent signal state changed, and why? | Deterministic policy, hysteresis, signal event semantics, baseline comparators |
+| L7 | Advisory target | What does that signal imply for this account under explicit constraints? | Contract mapping, risk model, existing risk, account rules |
+| L8 | Proposal and receipt | What may the operator change, and what actually happened? | Authorization, preconditions, idempotency, verification |
 
 Each product carries its input cut, policy/model revision, scope, validity, limitations, and evidence references. A higher level may narrow or invalidate admissibility; it cannot erase lower-level uncertainty. A target is inspectable through its exact dependencies, not through reconstructed explanations generated later by an LLM.
 
@@ -87,7 +89,7 @@ Drill down by stable IDs. Summary results contain short explanations and evidenc
 
 ## Causal dependency and invalidation
 
-The dependency path is explicit: receipt/snapshot -> account revision -> posture -> cluster/model revision -> consensus decision -> advisory -> command receipt. Record edge IDs and content hashes. Changing a policy, correcting a position, expiring equity, or changing universe membership invalidates the affected descendants and reusable caches.
+The V2 dependency path is explicit: receipt/snapshot -> account revision -> WalletEvidence -> independence/cohort artifacts -> EnsembleEvidence -> PredictiveEvidence -> TradeSignal -> advisory -> command receipt. V1 posture/consensus remains a baseline comparator, not the only information path. Record edge IDs and content hashes. Changing a policy, correcting a position, expiring equity, or changing universe membership invalidates the affected descendants and reusable caches.
 
 Use scoped invalidation: a corrupt SOL wallet observation should not force every BTC calculation to rerun. Conversely, an account-wide equity correction can affect that wallet's entire posture vector. A new cluster artifact can affect all targets in its declared instrument/horizon scope. Corrections create new decisions; published history is never silently overwritten.
 

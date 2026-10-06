@@ -17,7 +17,8 @@ The system composes these contexts through one linked evidence model; they are N
 - `STATUS.md`: dated, inspected capability inventory; not a deployment health report.
 - `SYSTEM.md`: target system and module responsibilities.
 - `CONTRACTS.md`: normative information, identity, durability, and delivery rules.
-- `RESEARCH.md`: signal semantics, validation, and account-advice rules.
+- `SIGNAL-V2.md`: compact V2 scoring/signal architecture synthesis and current claim boundary.
+- `RESEARCH.md`: normative signal semantics, feature definitions, research ladder, validation, and account-advice rules.
 - `OPERATIONS.md`: agent-facing interface and operational authority.
 - `QUALIFICATION.md`: executable acceptance scenarios and evidence requirements.
 - `plan.md`: dependency-aware work slices; never evidence that a slice passed.

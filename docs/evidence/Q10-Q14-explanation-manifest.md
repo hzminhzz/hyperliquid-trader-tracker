@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables Qualified
 
-This manifest certifies completion of slice **S4**, delivering declared eligibility, fixed-scale normalization, equal-budget baseline consensus (B1), unknown-weight bounds, causal change categories, and contribution ledgers per [RESEARCH](docs/RESEARCH.md) and [QUALIFICATION](docs/QUALIFICATION.md):
+This manifest certifies completion of slice **S4**, delivering declared eligibility, fixed-scale normalization, equal-budget baseline consensus (B1), unknown-weight bounds, causal change categories, and contribution ledgers per [RESEARCH](../RESEARCH.md) and [QUALIFICATION](../QUALIFICATION.md):
 
 ### Qualified Acceptance Scenarios
 

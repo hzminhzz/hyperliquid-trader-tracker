@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables Qualified
 
-This manifest certifies completion of slice **S7**, delivering the account adviser, explicit rulebook constraints, loss models, downward lot rounding, unsized informational fallbacks, and the meaningful-change Telegram notification adapter per [RESEARCH](docs/RESEARCH.md) R6 and [QUALIFICATION](docs/QUALIFICATION.md) Q12, Q08:
+This manifest certifies completion of slice **S7**, delivering the account adviser, explicit rulebook constraints, loss models, downward lot rounding, unsized informational fallbacks, and the meaningful-change Telegram notification adapter per [RESEARCH](../RESEARCH.md) R6 and [QUALIFICATION](../QUALIFICATION.md) Q12, Q08:
 
 ### Qualified Acceptance Scenarios
 

@@ -1,10 +1,24 @@
 # Inspected status and implementation gaps
 
-**Inspection:** 2026-10-06. **Code baseline:** `ffff331aa0f52e299ee995e2c96246c1253712a7`.
+**Inspection:** 2026-10-06. **Historical V1 baseline:** `ffff331aa0f52e299ee995e2c96246c1253712a7`. **Current tracker head inspected for V2:** `9b55228`. **Current expert-engine head inspected for V2:** `bf88f7a`.
 
-This page records code inspection, not a running-service health check. The fork is `hzminhzz/hyperliquid-trader-tracker`; its VPS checkout is `/home/quant/dev/hyperliquid-trader-tracker`. At inspection the code matched the fork's `main`. The local remote was `origin`; no `upstream` remote was configured. Recheck these facts before implementation.
+This page records code inspection, not a running-service health check. The fork is `hzminhzz/hyperliquid-trader-tracker`; its VPS checkout is `/home/quant/dev/hyperliquid-trader-tracker`. The separate scoring application is `/home/quant/dev/hyperliquid-expert-ensemble`. At the V2 inspection both checkouts matched their `origin/main`; the tracker also had an `upstream` remote for KonScanner. Recheck these facts before implementation.
 
-## Capability inventory
+## V2 scoring inspection
+
+Verified at the current expert-engine head:
+
+- Production `EnsembleRuntime.compute_targets()` uses `compute_equal_budget_consensus`; B2 cluster consensus, B3 quality weighting, and B4 regime conditioning are not on the live scoring path.
+- `compute_posture()` retains `raw_exposure` but downstream consensus contributions use bounded `clipped_posture`; V2 therefore treats early clipping as an information-loss risk rather than deleting it outright.
+- The projection store maintains current positions/equity and replayable offsets, but there is no canonical WalletEvidence artifact for intent flow, relative conviction, independent breadth, or multi-horizon outcomes.
+- Similarity uses bounded-posture distance with flat-flat exclusion and deterministic complete-link clustering.
+- B3 quality weights currently use lagged profit factor; B4 uses a fixed high-volatility threshold and 0.70 dampening. These are candidate mechanics, not demonstrated predictive optima.
+- `uv run pytest -q` passed **39 tests** during this inspection.
+- Both `copytrade-ensemble.service` and `copytrade-tracker.service` returned `inactive` at the inspection instant. This is a service-state observation only, not a statement about intended deployment configuration.
+
+**Claim boundary:** V1 engineering/descriptive evidence is real and useful. The inspected tests do not establish forward predictive edge for B2/B3/B4. See [SIGNAL-V2](SIGNAL-V2.md) and [QUALIFICATION](QUALIFICATION.md).
+
+## Historical capability inventory
 
 | Capability | Evidence at baseline | Status |
 |---|---|---|

@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables Qualified
 
-This manifest certifies completion of slice **S8**, integrating the Rust observation ledger and the separate Python expert ensemble application in isolated shadow/advisory mode, executing the high-leverage integration fixture, validating all six ground-truth operator tasks, measuring staged capacity envelopes, and proving failure recovery per [QUALIFICATION](docs/QUALIFICATION.md) Q07, Q14, Q16, Q17, Q18:
+This manifest certifies completion of slice **S8**, integrating the Rust observation ledger and the separate Python expert ensemble application in isolated shadow/advisory mode, executing the high-leverage integration fixture, validating all six ground-truth operator tasks, measuring staged capacity envelopes, and proving failure recovery per [QUALIFICATION](../QUALIFICATION.md) Q07, Q14, Q16, Q17, Q18:
 
 ### Qualified Acceptance Scenarios
 

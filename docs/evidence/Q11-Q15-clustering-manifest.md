@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables Qualified
 
-This manifest certifies completion of slice **S6**, establishing aligned posture similarity features, deterministic complete-link clustering, clone-resistant hierarchical aggregation (B2), and research promotion evaluation per [RESEARCH](docs/RESEARCH.md) R3–R7 and [QUALIFICATION](docs/QUALIFICATION.md) Q11, Q15:
+This manifest certifies completion of slice **S6**, establishing aligned posture similarity features, deterministic complete-link clustering, clone-resistant hierarchical aggregation (B2), and research promotion evaluation per [RESEARCH](../RESEARCH.md) R3–R7 and [QUALIFICATION](../QUALIFICATION.md) Q11, Q15:
 
 ### Qualified Acceptance Scenarios
 

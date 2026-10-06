@@ -1,162 +1,375 @@
-# Agent-operable expert ensemble: implementation plan
+# Forward-qualified expert signal engine: V2 implementation/research plan
 
-**Status:** revised design plan, 2026-10-06. No implementation slice is completed by this document. **Mandatory infrastructure:** the user's KonScanner fork. **Baseline:** `ffff331aa0f52e299ee995e2c96246c1253712a7`.
+**Status:** implementation-ready architecture/research plan, 2026-10-06. V1 is complete and remains the descriptive/advisory baseline. This plan does not itself implement V2.
 
 ## Goal and terminal predicate
 
-Produce a two-process, observation/advisory system that an agent can inspect accurately, explain causally, improve through bounded experiments, operate within explicit authority, and recover without inventing knowledge. The user supplies the expert universe. Discovery subscriptions, paid analytics, and real order execution are not prerequisites.
+Transform the existing expert-ensemble from a bounded descriptive consensus into a point-in-time-correct, causally legible, forward-qualified signal engine without weakening observation/replay correctness or enabling financial execution.
 
-V1 is complete when S0-S8 have accepted evidence (or an optional research candidate is explicitly rejected in favor of its qualified baseline), the system operates in shadow/advisory mode, every target has replayable lineage and validity, agent operations pass the task battery, and no real execution authority is enabled. Economic advantage remains a separately reported result, never an assumed deliverable.
+V2 is complete only when:
+- descriptive bias/state/flow evidence is replayable and inspectable;
+- the B0-B4 representation ladder can be evaluated on frozen point-in-time manifests;
+- every emitted candidate signal can receive immutable multi-horizon outcomes;
+- at least one deterministic signal policy clears historical and live-forward gates after realistic latency/costs;
+- production advisory promotion is explicit and reversible;
+- simpler baselines remain available as comparators;
+- negative results are retained.
 
-Authoritative references: [SYSTEM](docs/SYSTEM.md), [CONTRACTS](docs/CONTRACTS.md), [OPERATIONS](docs/OPERATIONS.md), [RESEARCH](docs/RESEARCH.md), [QUALIFICATION](docs/QUALIFICATION.md). [STATUS](docs/STATUS.md) lists inspected gaps G01-G11.
+If no candidate demonstrates forward predictive value, V2 research may terminate with the descriptive engine plus a rejected signal-policy result. That is a valid scientific outcome.
 
-## Execution principles
+Authorities: [SYSTEM](docs/SYSTEM.md), [CONTEXT](CONTEXT.md), [CONTRACTS](docs/CONTRACTS.md), [RESEARCH](docs/RESEARCH.md), [QUALIFICATION](docs/QUALIFICATION.md), [OPERATIONS](docs/OPERATIONS.md).
 
-Use one autonomous top-level goal over the dependency graph, not a manual continuation per small ticket. At each step inspect actual repository/branch/worktree/GitHub state and instructions; preserve legitimate concurrent changes; select the ready frontier; delegate independent bounded work through the available native executor; implement; diagnose ordinary failures; rerun; inspect the diff/evidence; and recompute dependencies. Long deterministic jobs may use the installed worker runner with checkpoints and budgets. Only commit/push, deploy, or change repository settings within authorization.
+## Verified starting point
 
-The agent may not weaken an acceptance predicate, fabricate a completed capability, spend beyond its budget, or enable financial execution to make the plan finish. A failed hypothesis is retained as a result; a failed correctness gate blocks dependent implementation/promotion.
+- Tracker repository main: `9b55228`.
+- Expert-engine repository main inspected at `bf88f7a`.
+- Existing expert-engine suite: 39 tests passing at inspection.
+- Live production runtime code currently computes only equal-budget V1 consensus.
+- B2/B3/B4 mechanics exist as research functions, but their synthetic tests establish engineering behavior, not forward predictive edge.
+- Current hard-coded research/runtime thresholds are candidate parameters, not proven optima.
+- Rust observation ledger remains authoritative; do not redesign ingestion for V2 unless a required signal datum is unavailable from the contract.
+
+## Design constraints
+
+1. Preserve raw information before bounded aggregation.
+2. State and flow are separate products.
+3. Cluster is the unit of independent influence after redundancy adjustment.
+4. Skill is separate from capital size and current conviction.
+5. Confidence, signal strength, crowding risk and expected return are separate.
+6. No threshold is called optimal without a registered experiment.
+7. No LLM participates in scoring, accounting, signal-state transitions or risk enforcement.
+8. No financial execution is added.
+9. Research code uses sealed point-in-time manifests and reusable persisted features.
+10. A later rung cannot erase or hide its simpler baseline.
 
 ## Dependency graph
 
 ```text
-S0 baseline -> S1 correct observation semantics -> S2 durable publication
-                                                    |
-                                                    v
-                                      S3 inspect + replay + evidence
-                                             /             \
-                                            v               v
-                                  S4 baseline target    S5 bounded control
-                                             \             /
-                                              v           v
-                                    S6 dedup candidate   S7 account advice
-                                               \          /
-                                                v        v
-                                             S8 qualification
-                                                    |
-                                             S9 optional learning
+V20 inspect/freeze baseline
+        |
+        v
+V21 WalletEvidence: raw bias + intent semantics
+        |
+        +-------------------+
+        |                   |
+        v                   v
+V22 independence       V23 relative conviction
+        \                   /
+         \                 /
+          v               v
+            V24 EnsembleEvidence
+                    |
+                    v
+            V25 outcome ledger
+                    |
+                    v
+            V26 B0-B4 ablations
+                    |
+          +---------+---------+
+          |                   |
+          v                   v
+ V27 cohort/skill       V28 context/crowding
+          \                   /
+           \                 /
+            v               v
+             V29 signal policy
+                    |
+                    v
+             V30 live-forward
+                    |
+                    v
+             V31 advisory promotion
 ```
 
-S6 and S7 each depend on BOTH S4 and S5. They can be developed independently behind their interfaces; S8 integrates them. S9 is optional and must not block V1. Shared contract and migration edits have one owner.
+V27 and V28 are optional until B0-B4 show useful structure. V29 may terminate as REJECTED if no evidence set earns predictive use.
 
-## Slice ledger
+## Work slices
 
-| ID | Depends on | Deliverable | Acceptance evidence |
-|---|---|---|---|
-| S0 | none | Pinned baseline, capability and workload inventory | Q01 |
-| S1 | S0 | Correct scoped observations and explicit uncertainty | Q02-Q04 |
-| S2 | S1 | Durable receipts/checkpoints/outbox and snapshot/tail | Q05-Q06, Q08 |
-| S3 | S2 | Inspectable evidence, projection/replay substrate | Q09, Q14; initial Q16 |
-| S4 | S3 | End-to-end normalized equal-budget target with explanations | Q10, Q14 |
-| S5 | S3 | Typed plan/apply, jobs, budgets, receipts, handoffs | Q13, Q16, Q18 |
-| S6 | S4, S5 | Versioned similarity/dedup experiment and accepted baseline/candidate | Q11, Q15 |
-| S7 | S4, S5 | Account-aware advisory output and optional Telegram adapter | Q12, Q08 |
-| S8 | S6, S7 | Integrated shadow, recovery, load and agent qualification | Q07, Q14, Q16-Q18 |
-| S9 | S8 | Optional quality/regime research and controlled promotion | Q15 |
+### V20 — Freeze the V1 baseline and evidence semantics
 
-### Milestone: Agent-operable expert ensemble V1
+**Depends on:** none.
 
-**Issue 1 — S0: Establish a trustworthy baseline**
+**Deliverable**
+- capture tracker/engine revisions, deployed runtime path, feature paths and current candidate constants;
+- register B0 as the exact V1 live equal-budget bounded consensus;
+- classify existing Q10/Q11/Q15 evidence by qualification class;
+- record current wallet universe selection semantics and whether historical studies are conditional fixed-universe or true PIT selection.
 
-**Scope:** inspect the fork, upstream relationship, existing Rust/Python implementations, source contracts, tests, deployed processes, and available VPS resources without changing services. Verify actual GitHub Issues availability before choosing a tracker. Configure an `upstream` remote only within the implementation authorization; do not rebase the user's work.
+**Verify**
+- Q01;
+- existing test suites remain green;
+- no service/config/source changes.
 
-**Deliverable:** evidence manifest identifying the baseline, command capabilities, known failures, shared IP/API consumers, available compute/disk, scoped initial wallet set, and explicit live-test limits. Check that the inherited Python tracker is not confused with the new engine.
+**Exit**
+- later experiments can reproduce B0 exactly and cannot cite synthetic candidate tests as predictive evidence.
 
-**Verify:** run existing Rust checks (`make check-rs`) and the inherited Python checks when relevant (`make check`), after inspecting dependency/tool requirements. Record actual results and network/build effects. Perform only bounded public read probes; no Telegram broadcasts or order placement merely to qualify infrastructure. Convert G01-G11 into testable baseline findings; do not assume all prose claims are implemented.
+### V21 — Deepen WalletEvidence
 
-**Exit:** baseline evidence exists and the reproducible limitations are classified. An existing failing test may be carried into S1 only as an explicit defect with its required repair; no green baseline claim.
+**Depends on:** V20.
 
-**Issue 2 — S1: Deepen the existing observation module**
+**Scope**
+Python expert-engine projection/feature layer only unless tracker contract lacks an indispensable event field.
 
-**Scope:** narrow Rust changes around `listener.rs`, `book.rs`, `enrich.rs`, `app.rs`, `resolve.rs`, and registry/config interfaces as warranted. Keep the existing pure reducer unless a failing behavior proves a change necessary.
+**Deliverable**
+- canonical WalletEvidence artifact;
+- raw unclipped bias retained;
+- bounded influence as a named baseline transform;
+- portfolio share over observable scope;
+- OPEN/ADD/REDUCE/CLOSE/FLIP intent events;
+- multi-horizon flow features;
+- position age, intent age and observation age;
+- explicit cause separation for economic change vs valuation/equity/reconciliation.
 
-**Deliverable:** composite economic identities, explicit persistent-ready revisions/generations, strict snapshots, applied/skipped/failed reconciliation outcomes, separate desired wallet universe, scoped equity/mark observations, and coverage states. Decouple production observation from chat recipients and move slow PnL/delivery work out of the ingestion loop. Introduce a shared weighted request scheduler with recovery allowance.
+**Verify**
+Q04-Q07 and adversarial cases:
+- +2x -> +1x;
+- unchanged +0.7 state;
+- tiny add on huge old position;
+- reconciliation correcting quantity;
+- mark/equity-only changes.
 
-**Verify:** add the Q02-Q04 adversarial traces; use `cargo test --locked` and `make check-rs` against the actual head. Observe duplicate IDs across instruments, two watched counterparties, bad empty snapshots, concurrent reseeds, retired wallets, and partially known position histories. Compare public fields with provider evidence from S0.
+**Exit**
+No information required by later research is destroyed by the posture abstraction.
 
-**Exit:** the observation semantics are explicit and tested; unsupported scope and missing history remain visible. No durable-publication claim yet.
+### V22 — Independence artifact V2
 
-**Issue 3 — S2: Commit facts before publishing them**
+**Depends on:** V21.
 
-**Scope:** Rust persistence and export only. Implement C2-C5 in [CONTRACTS](docs/CONTRACTS.md) over the existing SQLite infrastructure, with migrations and one logical writer. Do not add a broker or a competing position engine.
+**Deliverable**
+- versioned similarity feature schema using intent/state behavior;
+- support measured in active steps and episodes;
+- complete-link baseline retained;
+- effective breadth;
+- UNKNOWN similarity/newcomer policy;
+- PIT cluster training cutoff/update schedule.
 
-**Deliverable:** durable receipt ledger, economic dedup index, state/checkpoint/outbox transaction, versioned event envelope, consistent snapshot pages, bounded ordered tail, retention floors, and backpressure. A stream is optional notification of available durable data, never the sole recovery channel. Notification/PnL adapters consume committed events independently.
+**Verify**
+Q08 plus clone, chain-link, low-support and strategy-drift fixtures.
 
-**Verify:** Q05/Q06/Q08 crash and recovery matrix through the external publication interface. Kill between acceptance, transaction commit, cache publication, consumer application, and acknowledgement. Check migrations/restore on copies of fixtures. Run the Rust checks plus the new contract tests; their executable names must be exposed in capability/help output, not hidden in a developer's notebook.
+**Exit**
+15 clones cannot become 15 independent votes, and historical as-known replay cannot use future cluster knowledge.
 
-**Exit:** the consumer can stop, restart, resume, or rebootstrap truthfully; no accepted event is silently lost, and source gaps are not confused with local durability.
+### V23 — Trader-relative conviction
 
-**Issue 4 — S3: Give the agent eyes before advanced intelligence**
+**Depends on:** V21.
 
-**Scope:** create the separate Python application at an explicitly recorded repository/path; until then keep its implementation out of this fork. Build its own transactional projection/offset store, evidence manifests, and replay runner. Both processes retain independent database ownership.
+**Deliverable**
+- lagged per-expert/per-instrument bias distribution artifact;
+- robust percentile/rank feature;
+- minimum support and UNKNOWN semantics;
+- drift diagnostics;
+- no current-sample leakage.
 
-**Deliverable:** actual `inspect capabilities`, `inspect system`, `inspect changes`, and evidence lookup; consistent worldviews; input-lineage IDs; isolated as-known versus restated replay; machine-readable validation/errors; basic job checkpoints. Implement these vertical capabilities rather than scaffolding every future module.
+**Verify**
+Q09.
 
-**Verify:** Q09/Q14 plus initial cold-start Q16 tasks. Same pinned accepted stream gives the same projected state after interruption. A future/unimplemented command is absent from available capabilities. Compact JSON retains fatal blockers and explicit truncation. Existing Rust checks and Python integration tests pass on the relevant repositories.
+**Exit**
+System can answer whether current exposure is unusual for the trader without claiming that unusual means predictive.
 
-**Exit:** an operator can identify actual capabilities, health, coverage, drift, and evidence without reading internal tables or reconstructing logs.
+### V24 — Canonical EnsembleEvidence
 
-**Issue 5 — S4: Deliver the first complete target explanation**
+**Depends on:** V22, V23.
 
-**Scope:** Python posture/ensemble and read-only explanation handlers.
+**Deliverable**
+One deep interface that assembles:
+- state evidence;
+- flow evidence by horizon;
+- relative conviction summaries;
+- independent breadth;
+- supporting/opposing cluster contributions;
+- missing/reliability diagnostics;
+- B0/B1/B2 comparators;
+- hooks for optional skill/context fields;
+- exact lineage and revisions.
 
-**Deliverable:** declared eligibility, fixed-scale normalization, equal-budget baseline, unknown-weight bounds, target history, causal change categories, and contribution ledger. One expert can travel all the way from observed state to a correct explainable target before expanding the universe. Include market/equity changes and correction events, not only fill triggers.
+Do not collapse these into one score.
 
-**Verify:** Q10/Q14 with exact fixture arithmetic. Flat, abstention, unavailable, removed, and corrected state are distinct. The identical target is produced live and in as-known replay under the same timer policy. Expired equity cannot silently produce a fresh posture.
+**Verify**
+Q11 and agent explanation fixtures.
 
-**Exit:** useful observation-to-consensus capability exists even without learned weights, clustering, or account execution.
+**Exit**
+A caller can understand the situation without reassembling lower-level modules.
 
-**Issue 6 — S5: Make control safe and cheap**
+### V25 — Forward outcome ledger
 
-**Scope:** operations facade and owner-specific command handlers, not a generic shell API.
+**Depends on:** V24.
 
-**Deliverable:** typed proposals, immutable plans, grants, expected revisions, idempotency, cost budgets, receipts, bounded job start/resume/cancel, pause/recovery policy, and compact handoffs. Generate CLI/API schemas/help from one implementation. MCP is optional after the CLI contract is stable.
+**Deliverable**
+- immutable OutcomeRecord attachment for every evidence/signal emission;
+- 1m, 5m, 15m, 1h, 4h, 24h outcomes;
+- latency-adjusted and cost-adjusted returns;
+- MFE/MAE;
+- context/coverage at emission;
+- late correction flag;
+- incremental/resumable computation over sealed manifests.
 
-**Verify:** Q13/Q16/Q18. Reject stale/expired plans, authority escalation, cross-scope changes, prompt-injected labels, budget overruns, and replay effects. Resume a job instead of rerunning its full input. A repeated valid command key yields the original receipt.
+**Verify**
+Q12; outcome attachment cannot mutate historical feature values or knowledge times.
 
-**Exit:** routine maintenance/research can be delegated within explicit permissions without unrestricted production access. Real financial execution remains unavailable.
+**Exit**
+Every research question can use the same reusable outcome substrate instead of one-off scripts.
 
-**Issue 7 — S6: Test independence rather than count wallets**
+### V26 — B0-B4 frozen ablation program
 
-**Scope:** Python research and immutable similarity/cluster artifacts. This can proceed alongside S7 after S4/S5.
+**Depends on:** V25.
 
-**Deliverable:** aligned causal posture features, support diagnostics, deterministic complete-link candidate, stable membership versions, clone-resistant hierarchical aggregation, and baseline-versus-candidate evaluation. Record thresholds/search space before forward evaluation. Manual groups/equal baseline remain usable when data cannot support inferred independence.
+**Deliverable**
+Run registered paired evaluations:
+- B0 V1 bounded consensus;
+- B1 raw-state representation;
+- B2 independent-state;
+- B3 independent-flow;
+- B4 relative-conviction.
 
-**Verify:** Q11/Q15. Test exact clones, independent same-direction experts, chain-link clustering traps, sparse overlaps, flat-heavy series, and missing data. Keep latency/cost assumptions and point-in-time universe fixed between candidates. Account for membership-change turnover.
+Required comparisons:
+- clipped-only vs raw-preserved;
+- state vs flow vs state+flow;
+- equal-wallet vs cluster-aware;
+- absolute vs relative conviction;
+- latency/cost sensitivity;
+- expert-dropout sensitivity.
 
-**Exit:** the module and explanations work; economic evaluation either accepts the candidate or records rejection/inconclusive evidence and retains the baseline. Do not force profitable results or optimize the held-out period until the candidate wins.
+**Verify**
+Q13-Q16.
 
-**Issue 8 — S7: Produce bounded account advice, not assumed copying**
+**Exit**
+Each rung is PROMOTE, REJECT or INCONCLUSIVE with retained evidence. No parameter tuning on the final holdout.
 
-**Scope:** separate Python account adviser and output adapter; no real order-placement module.
+### V27 — Skill/cohort divergence candidate
 
-**Deliverable:** explicit account rulebook, broker/instrument mappings, confirmed/manual account-state input, per-opportunity and portfolio risk ceilings, stop/stress assumptions, unsized fallback, rounding, expiry, and meaningful-change Telegram messages. Keep diagnostic trader alerts optional and separate. Unknown account position prevents incremental order advice.
+**Depends on:** V26 and only starts if prior evidence justifies it.
 
-**Verify:** Q12/Q08. Exercise daily resets, floating loss, existing correlated positions, fees/slippage, unavailable stop assumptions, unmapped instruments, stale manual entries, and notification retry. No recommendation claims safety from historical drawdown alone.
+**Deliverable**
+- PIT alpha/control/anti-alpha cohort artifact;
+- lagged horizon-specific skill metrics with shrinkage;
+- drift/decay policy;
+- skill divergence feature;
+- cluster-budget-preserving optional quality weighting.
 
-**Exit:** complete/fresh inputs yield explainable bounded advice; otherwise the system returns informational targets and named blockers. Sending any production notifications requires an approved recipient/configuration.
+**Verify**
+Q10, Q17 and equal-weight ablation.
 
-**Issue 9 — S8: Qualify the synthetic system**
+**Exit**
+Use in predictive evidence only if incremental holdout value is robust; otherwise retain as research/descriptive metadata.
 
-**Scope:** integrated Rust/Python deployment in isolated shadow/advisory mode, evidence and task batteries, recovery and staged scale.
+### V28 — Market divergence and crowding candidates
 
-**Deliverable:** one evidence index showing engineering, operational ergonomics, resource use, and economic results separately. Demonstrate real bounded source comparison, event capture/replay, downstream outage, source gap, policy rollback, retention recovery, and an interrupted agent session.
+**Depends on:** V26 and only starts if data are available point-in-time.
 
-**Verify:** Q07/Q14/Q16-Q18 and regression scenarios affected by the integrated head. Run declared staged load and bounded soak jobs, preserving checkpoints/artifacts. Evaluate 10/100/1,000-wallet capacity only with an explicit stream/market/activity/recovery workload. Account for other VPS workloads and provider limits. Independently inspect worker evidence rather than accepting a success narrative.
+**Deliverable**
+Add one family per registered experiment:
+- funding;
+- OI;
+- volatility/price response;
+- liquidation/crowding metrics only when provenance/support are adequate.
 
-**Exit:** all mandatory correctness/authority gates pass, resource envelope is declared, agent task correctness is demonstrated, and remaining economic uncertainty is explicit. Deployment remains advisory, not automated execution.
+Separate:
+- directional predictor use;
+- risk-gate use.
 
-**Issue 10 — S9: Optional adaptive quality and regime research**
+**Verify**
+Q18 plus missing/context-staleness cases.
 
-Introduce lagged quality weighting or regime conditioning one family at a time, only after simpler baselines are useful. Require train/evaluation separation, uncertainty, ablations, negative results, and explicit promotion authority. This is not on V1's critical path.
+**Exit**
+Only promoted families enter PredictiveEvidence.
 
-# Plan history
+### V29 — Deterministic signal state machine
 
-## What changed from M0-M14
+**Depends on:** V26 plus any promoted V27/V28 features.
 
-The previous milestones are superseded by the slice ledger above. M0-M3 become S0-S2; M4 becomes S3; M5-M6 become S4; M7-M9 become S6; M10 becomes optional S9; M11-M12 become S7; M13 becomes S8. M14 real execution remains out of scope. S5 adds the missing control/evidence loop early rather than bolting on agent access after the trading logic.
+**Deliverable**
+- canonical TradeSignal artifact;
+- FLAT/LONG/SHORT state;
+- ENTER/INCREASE/REDUCE/EXIT/REVERSE/NONE event;
+- explicit signal strength;
+- structured confidence components;
+- crowding risk separate;
+- expected_return NULL unless calibration passes;
+- invalidation conditions;
+- baseline comparators;
+- versioned thresholds/hysteresis.
 
-Mandatory PostgreSQL, a giant matrix recomputed on each fill, and one microservice per conceptual box are removed. Unqualified 'safe sizing', silent correction, missing-as-flat behavior, and broker-state inference from alerts are explicitly rejected. The design still requires KonScanner infrastructure, a durable handoff, a separate Python engine, and optional diagnostic Telegram.
+**Verify**
+Q19-Q20, Q24-Q25.
 
-## Documentation work delivered in this revision
+**Exit**
+Historical holdout demonstrates useful signal behavior after latency/costs, or the signal policy is explicitly rejected.
 
-Add a routed entrypoint, context map/glossary, inspected status/gaps, coherent system model, contracts, operations, research, qualification, and ADR. Mark inherited design/API assumptions as historical where superseded. Validate links, dependency structure, source references, and documentation diff hygiene. This revision does not itself run S0, install dependencies, change runtime code, modify services, publish issues, or grant new trading authority.
+### V30 — Frozen live-forward qualification
+
+**Depends on:** V29 historical promotion.
+
+**Deliverable**
+Freeze one candidate before live shadow evaluation. Auto-attach outcomes and record outages/missing experts. No retuning the same candidate during its forward clock.
+
+**Verify**
+Q21-Q23.
+
+**Exit**
+FORWARD-QUALIFIED only if the registered live-forward rule passes. Otherwise retain/reject and start a new candidate version if further research is justified.
+
+### V31 — Production advisory promotion
+
+**Depends on:** V30.
+
+**Deliverable**
+- policy approval artifact;
+- advisory runtime selects explicit promoted signal revision;
+- explanations show current model plus B0/B1/B2 comparators;
+- rollback to prior qualified policy;
+- degraded/missing-data behavior;
+- Telegram/inspection surfaces show signal state/event and evidence, not only target magnitude.
+
+**Verify**
+Q24-Q26 and existing authority/replay/load gates.
+
+**Exit**
+May be called **production advisory signal engine**. Financial execution remains unavailable.
+
+## What is explicitly not in this plan
+
+- automatic order execution;
+- automatic portfolio authority;
+- end-to-end neural/LLM scoring;
+- online self-training weights;
+- general-purpose feature platform;
+- new message broker/microservices for scoring;
+- auto-discovery claims without PIT selection history;
+- expected-return numbers without calibration;
+- universal fixed promotion constants;
+- capital-weighted voting;
+- single opaque confidence score.
+
+## Acceptance-name mapping
+
+**Descriptive bias engine**
+V20-V24 pass Q03-Q11/Q25 descriptive cases.
+
+**Signal-engine MVP**
+Descriptive engine + V25 + runnable V26 research ladder + typed TradeSignal interface, even if predictive emission remains disabled.
+
+**Forward-qualified signal engine**
+Relevant V26-V29 historical gates plus V30 live-forward gate pass.
+
+**Production advisory signal engine**
+Forward-qualified + V31 operational/approval gates pass.
+
+## Execution guidance
+
+When implementation is explicitly authorized:
+- inspect actual tracker and expert-engine branches first;
+- preserve concurrent changes;
+- implement in the expert-engine repository by default;
+- touch tracker contracts only if V21 proves required information is unavailable;
+- work dependency-aware from the ready frontier;
+- use bounded parallel subagents only for independent slices;
+- use reusable sealed manifests/checkpoints for long experiments;
+- diagnose failures and continue rather than weakening predicates;
+- review diff against the exact slice acceptance criteria;
+- commit/push coherent completed work only when authorized;
+- retain FAIL/BLOCKED/INCONCLUSIVE evidence;
+- recompute the frontier after each accepted slice.
+
+# V1 history
+
+The prior Agent-operable expert ensemble V1 milestone remains historical evidence of the observation, persistence, projection, baseline consensus, clone-resistance, advisory and operations infrastructure. It is not deleted or reinterpreted as proof of predictive edge. V2 begins from that qualified engineering substrate.

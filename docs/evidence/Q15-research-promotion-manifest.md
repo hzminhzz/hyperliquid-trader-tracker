@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables Qualified
 
-This manifest certifies completion of slice **S9**, delivering the research candidate ladder (B3 lagged quality weighting and B4 regime conditioning) under strict frozen forward-evaluation and promotion authority gates per [RESEARCH](docs/RESEARCH.md) R7 and [QUALIFICATION](docs/QUALIFICATION.md) Q15:
+This manifest certifies completion of slice **S9**, delivering the research candidate ladder (B3 lagged quality weighting and B4 regime conditioning) under strict frozen forward-evaluation and promotion authority gates per [RESEARCH](../RESEARCH.md) R7 and [QUALIFICATION](../QUALIFICATION.md) Q15:
 
 ### Qualified Acceptance Scenarios
 

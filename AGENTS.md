@@ -12,7 +12,7 @@ Read [docs/STATUS.md](docs/STATUS.md) to distinguish inspected implementation fr
 | Resolve terminology | [CONTEXT.md](CONTEXT.md) |
 | Change identity, persistence, recovery, or interfaces | [docs/CONTRACTS.md](docs/CONTRACTS.md) |
 | Operate, diagnose, delegate, or spend resources | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
-| Change normalization, similarity, consensus, or account advice | [docs/RESEARCH.md](docs/RESEARCH.md) |
+| Change normalization, state/flow evidence, similarity, predictive scoring, signal policy, or account advice | [docs/SIGNAL-V2.md](docs/SIGNAL-V2.md), [docs/RESEARCH.md](docs/RESEARCH.md) |
 | Implement or verify | Relevant slice in [plan.md](plan.md), then [docs/QUALIFICATION.md](docs/QUALIFICATION.md) |
 | Reconsider a costly choice | [ADR-0001](docs/adr/0001-agent-operating-model.md) |
 

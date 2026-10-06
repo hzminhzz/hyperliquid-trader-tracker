@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables & Repository Boundaries
 
-In conformance with [SYSTEM](docs/SYSTEM.md) and [CONTRACTS](docs/CONTRACTS.md), the expert ensemble engine is housed in an independent application repository rather than disguising itself as the inherited tracker:
+In conformance with [SYSTEM](../SYSTEM.md) and [CONTRACTS](../CONTRACTS.md), the expert ensemble engine is housed in an independent application repository rather than disguising itself as the inherited tracker:
 
 - **Location:** `/home/quant/dev/hyperliquid-expert-ensemble`
 - **Database Ownership:** Operates its own independent SQLite database (`projection.db`), tracking consumer offsets against the Rust observation ledger.

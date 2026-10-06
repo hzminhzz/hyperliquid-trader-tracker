@@ -1,6 +1,6 @@
 # Agent operating interface
 
-**Status:** proposed interface. None of the `copytrade` commands below exist at the inspected baseline. [STATUS](STATUS.md) is the capability inventory until S3 implements discovery. Do not install a similarly named package to make these examples run.
+**Status:** interface authority. V1 inspection/control handlers are implemented in the separate expert-engine application; specific command availability must still be read from `inspect capabilities` and [STATUS](STATUS.md). V2 signal-specific inspection fields remain target design until implemented.
 
 ## O1. A small vocabulary over one implementation
 
@@ -44,7 +44,7 @@ Compactness target: a normal system summary fits within 6 KiB of JSON; detail pa
 
 ## O3. Explanations are structured accounting
 
-For a consensus target, show the source position/equity revisions, expert postures, within-cluster contributions, cluster budgets, missing weight, prior decision comparison, and policy version. For account advice, show the binding limit, assumed stop/stress loss, costs, current account position, lot rounding, and expiry.
+For a V2 trade signal, show source position/equity revisions, raw bias and bounded influence, state versus new intent flow, relative conviction, independent cluster contributions and breadth, missing information, promoted predictive evidence, prior signal comparison, simpler baseline comparators, model/policy revisions, and invalidation conditions. For the V1 consensus fallback, preserve its existing contribution/missing-mass explanation. For account advice, show the binding limit, assumed stop/stress loss, costs, current account position, lot rounding, and expiry.
 
 Answer both 'why this target?' and 'why no target?'. Stable reason codes include `EQUITY_STALE`, `STATE_UNSEEDED`, `HISTORY_GAP`, `SOURCE_CONFLICT`, `CURSOR_EXPIRED`, `INSUFFICIENT_OVERLAP`, `ACCOUNT_STATE_MISSING`, `RISK_HEADROOM`, `POLICY_DRIFT`, `BUDGET_EXHAUSTED`, and `NOT_AUTHORIZED`.
 

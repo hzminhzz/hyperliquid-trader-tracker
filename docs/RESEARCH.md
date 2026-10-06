@@ -1,83 +1,495 @@
-# Ensemble semantics and research discipline
+# Ensemble semantics and V2 signal research
 
-**Status:** target design and explicitly provisional research defaults. No ranking, clustering, consensus, or risk policy is qualified by this document. Follow [CONTRACTS](CONTRACTS.md) for identity and point-in-time evidence.
+**Status:** authoritative research and signal-engine specification. V1 consensus remains the live descriptive baseline. Nothing in this document promotes a predictive model by prose alone.
 
-## R1. Separate facts, interpretation, and actions
+## R1. Separate observation, description, prediction, and action
 
-A wallet position is a fact about a scoped account, not proof of a directional forecast, a stop, or the trader's complete portfolio. External hedges are usually unknown. Interpret normalized exposure as posture, not psychological conviction.
+The system has four different epistemic layers:
 
-Keep these products separate: account view -> posture -> independent support -> consensus -> account advice. Each product records its exact parents and validity. Never blend estimated confidence, historical trader skill, current exposure, and source freshness into an opaque score.
+1. **Observation**: exchange/account facts and their uncertainty.
+2. **Description**: deterministic representations of expert behavior such as raw bias, flow, concentration, age, redundancy, and cohort state.
+3. **Prediction**: only features and mappings that demonstrate incremental forward value under the frozen evaluation protocol.
+4. **Action/advice**: account-independent signal state, then optional account-specific sizing under a separate risk engine.
 
-The user supplies candidates. Record when each wallet was supplied, admitted, retired, and permitted to influence decisions. A backtest of today's selected winners is a conditional retrospective, not an unbiased historical selection experiment. Keep retired and failed experts in the evaluation record.
+No downstream layer may silently convert an unknown into zero, a descriptive feature into a forecast, or a statistically useful forecast into execution authority.
 
-## R2. A simple interpretable baseline
+The user supplies candidate wallets. Record admission and retirement knowledge times. Today's selected winners cannot be backfilled into historical universes and called point-in-time selection.
 
-For expert i and instrument a, compute signed equity exposure `e(i,a) = quantity * valuation_price / scoped_equity`. Use compatible scope and timestamps. Missing/nonpositive equity makes normalization unavailable. Valuation identifies mark/mid and is not silently treated as an executable price.
+## R2. Canonical wallet evidence
 
-Baseline posture is `s(i,a) = clip(e(i,a) / k(i,a), -1, 1)`. The initial policy uses a fixed declared scale, with `k=1` as the transparent candidate default: 100% equity notional maps to unit posture. This is a research choice, not an optimized sizing claim. Always display uncapped exposure as well so clipping cannot hide leverage.
+For expert i, instrument a, and knowledge cut t:
 
-Trader-relative scales may later use lagged historical exposure distributions, with minimum support and a floor. Scale/model parameters are fixed for their declared evaluation interval; never estimate them using the trade currently being evaluated or future data.
+### R2.1 Raw equity bias
 
-Eligibility has an explicit instrument and holding-horizon scope. Separate fast trading from swing positions rather than making a scalper's exit cancel an unrelated swing signal. Unmapped instruments remain observable but cannot produce cross-venue account advice.
+[
+b_{i,a,t} = rac{q_{i,a,t} p_{a,t}}{E_{i,t}}
+]
 
-**Flat semantics:** a reliable flat expert in an eligible scope contributes zero and retains its allocated budget. An out-of-scope expert abstains by policy. Missing/unreliable state is unknown. Closing a long is not a short vote. Changing eligibility is a versioned policy event, not evidence of trading skill.
+where quantity q, valuation price p, and scoped equity E must be compatible in scope and knowledge time. If E is missing, non-positive, stale, or scope-incompatible, bias is unavailable.
 
-## R3. Fixed-budget hierarchical consensus
+Raw bias is unclipped. Values beyond +/-1 are retained because leverage magnitude may contain useful descriptive information.
 
-Let `b(g)` be a cluster budget and `a(i|g)` an expert's share within that cluster. Budgets sum to one over the policy's eligible scope. The full-data target is:
+### R2.2 Bounded influence
 
-`C(a) = sum_g b(g) * sum_i a(i|g) * s(i,a)`.
+A baseline vote may transform raw bias:
 
-Initial baseline: equal expert weights with optional user-declared duplicate groups. The next candidate uses equal cluster budgets and equal shares inside each cluster. Learned quality weights are a later, separately evaluated feature. Adding a wallet does not immediately change live denominators; membership is admitted through a scheduled versioned policy transition.
+[
+v_{i,a,t}(k) = operatorname{clip}(b_{i,a,t}/k,-1,1)
+]
 
-When weight mass `m` is unavailable, report its observed contribution `C_observed` and a conservative posture interval `[C_observed - m, C_observed + m]`, clipped to [-1,1]. This is a missing-information bound, not a statistical confidence interval. Missing mass is NOT reallocated to surviving experts. The policy can block new actionable advice when coverage is inadequate or the sign is ambiguous; preserve the last valid decision as expired evidence, not as a fresh instruction.
+The transform protects aggregation from leverage domination. It deliberately discards leverage magnitude beyond k, so every persisted evidence record MUST retain raw bias alongside bounded influence.
 
-Each decision stores expert and cluster contributions, missing mass, raw wallet count, effective breadth, coverage, prior-target delta, and cause category: economic change, valuation change, reconciliation, policy change, or recovery. No arbitrary 'confidence 74%' is shown without a calibrated probability model.
+Any k is a versioned candidate parameter until evaluated. The current V1 k=1 remains a transparent baseline, not an optimum.
 
-Exact duplicate expertise should not gain influence from additional copies. Qualification includes cloning an expert many times and checking cluster influence, plus controls showing that merely same-direction but independently timed experts are not automatically collapsed.
+### R2.3 Portfolio concentration
 
-## R4. Similarity is a versioned hypothesis
+For the observable compatible portfolio scope A:
 
-Measure redundancy per instrument and compatible horizon on an aligned time grid using only as-known valid states. A minute-grid is a starting research representation, not a requirement to recompute every matrix each minute. Persist incremental features; run pairwise/cluster work off the ingestion path.
+[
+c_{i,a,t} =
+rac{|N_{i,a,t}|}
+{sum_{jin A}|N_{i,j,t}|}
+]
 
-Use signed posture changes, non-flat direction agreement, entry/exit timing overlap, and lead/lag diagnostics. PnL correlation is supporting context because shared market exposure can dominate it. Exclude flat-flat agreement, stale intervals, and fabricated entry times from similarity support. Count independent position episodes as well as rows; thousands of unchanged snapshots are not thousands of independent observations.
+where N is signed notional. This distinguishes a 1x BTC position that dominates the wallet from a 1x BTC hedge inside a much larger multi-asset book. Unknown external venues remain an explicit limitation.
 
-Start with a deterministic complete-link grouping candidate rather than an unconstrained graph connected-component rule: A resembling B and B resembling C must not automatically merge dissimilar A and C. A candidate artifact must explicitly contain its feature definitions, distances, thresholds, minimum joint history/episode support, missing-data rules, training cutoff, stable tie-break, and assignment version. Thresholds are selected in a predeclared development experiment, not silently inferred by the live agent.
+### R2.4 Intent transitions and flow
 
-Insufficient overlap is `INSUFFICIENT_OVERLAP`, not zero correlation or proof of independence. Unclassified experts use the declared conservative newcomer/manual-group budget until there is support. Freeze assignments between scheduled updates; use membership-change hysteresis so noisy cluster churn cannot become portfolio turnover.
+A verified economic position transition is classified as OPEN, ADD, REDUCE, CLOSE, or FLIP from before/after signed exposure. Reconciliation corrections, valuation changes, and equity-only changes MUST NOT create intent flow.
 
-Each pair/cluster explanation names the observations and features driving similarity. Similar behavior does not prove common ownership, insider status, or copying intent.
+Define exposure change attributable to economic intent:
 
-## R5. Target cadence and change control
+[
+Delta b^{intent}_{i,a,e} =
+b^{counterfactual after event}_{i,a,e}
+-
+b^{before event}_{i,a,e}
+]
 
-Use event-driven updates to affected postures and targets, with a declared bounded aggregation/debounce window. Record that timing policy for replay. Periodic market/equity changes can also change normalized exposure and must have explicit causes.
+using the same valuation/equity cut where feasible so passive price/equity drift does not masquerade as trader action.
 
-Use no-trade bands and entry/exit hysteresis at the advisory boundary to control small fluctuations. Never debounce away coverage loss, a stop condition, or an explicit position close. A target is state, not an order stream. Repeated equivalent targets do not create repeated actions.
+For a declared lookback h:
 
-## R6. Account advice is an independent constraint engine
+[
+f_{i,a,t}^{(h)} =
+sum_{e: t-h < known(e)le t} Delta b^{intent}_{i,a,e},K_h(t-known(e))
+]
 
-The target is informational until the account, instrument mapping, price, risk model, and rulebook are complete and fresh. The account rulebook must declare loss-floor formulas, daily reset timezone/calendar, trailing/static behavior, realized/unrealized treatment, commissions/swaps, and existing open risk. Do not infer these from a '5% daily / 10% total' label.
+where K_h is a declared deterministic decay kernel. Start with no-decay window sums as the baseline; exponential decay is a later candidate.
 
-A proposed per-opportunity risk allocation comes from a bounded policy. Total remaining drawdown and daily headroom are ceilings, NOT the amount to multiply directly by consensus. Aggregate existing plus proposed stressed loss, correlation/concentration, fees, slippage, and safety reserves before approval. Multiple assets share one account budget.
+### R2.5 Ages
 
-Convert monetary risk into notional only with an explicit loss model: a validated stop distance plus cost/gap allowance or a conservatively qualified scenario loss per unit. Historical maximum drawdown and MAE are descriptive estimates, not guaranteed future loss limits. No stop or credible stress model means `UNSIZED`, with an exposure comparison only; never label a notional 'SAFE SIZE'.
+- **position_age**: since the true current episode OPEN/FLIP if known.
+- **intent_age**: since the most recent OPEN/ADD/REDUCE/CLOSE/FLIP.
+- **observation_age**: since the latest admissible observation.
 
-Broker contract size, minimum lot, lot increment, currency conversion, price basis, and symbol equivalence are versioned. Round sizes downward where needed to respect the risk ceiling. Hyperliquid exposure and a prop firm's similarly named contract are not assumed identical.
+These are different. Seed time cannot fabricate position age.
 
-Action delta uses fresh confirmed actual account holdings. Without account integration or a timestamped manual position ledger, show a target only; do not tell the user to 'add' a quantity inferred from the prior alert. Advice expires and must be rechecked before action. Notification-only delivery cannot guarantee prop-rule compliance or order execution.
+### R2.6 Trader-relative conviction
 
-## R7. Research ladder and promotion
+For a lagged, point-in-time history H of |b| in the same scope:
 
-Compare on the same point-in-time universe, input manifest, capital/risk policy, delay assumptions, and cost model:
+[
+r_{i,a,t} = F^{past}_{i,a}(|b_{i,a,t}|)
+]
 
-- B0: user-selected single-expert reference, selected before the forward interval.
-- B1: equal normalized experts.
-- B2: duplicate/cluster adjustment with otherwise identical policy.
-- B3: cluster adjustment plus lagged quality weights.
-- B4: optional regime conditioning only after the simpler model is justified.
+where F is the empirical CDF or another predeclared robust rank estimator fitted only before t. Report direction separately: signed relative conviction may be sign(b)*r.
 
-For each extra mechanism, retain the ablation, development search count, forward evaluation, cost/turnover change, drawdown, tail stress, coverage, and uncertainty. Reserve chronological evaluation periods; avoid random splitting of overlapping position histories. Fit scales, similarity, quality, and eligibility only on information available before evaluation. Include receipt/alert/manual-execution delays; the follower does not automatically receive the leader's fill price.
+Insufficient history yields UNKNOWN, not neutral 0.5. Relative conviction is descriptive until an ablation proves predictive value.
 
-Promotion requires engineering gates plus evidence that the extra complexity is useful under the declared objective. Block/episode-based uncertainty analysis should respect temporal dependence. A failed economic improvement keeps the simpler baseline; it is not permission to keep searching the holdout. Quality weighting is not a prerequisite for the first useful monitoring/consensus product.
+## R3. Independence before agreement
 
-Track data quality and economics separately. A perfectly replayable engine may produce no profitable advantage. A profitable sample cannot excuse missing events or unsafe control.
+Raw wallet count is not evidence breadth.
+
+Similarity artifacts are versioned by instrument/horizon and trained only on as-known history. Candidate features include:
+
+- signed posture/bias changes;
+- OPEN/ADD/REDUCE/CLOSE/FLIP timing;
+- non-flat direction agreement;
+- lead/lag structure;
+- episode overlap;
+- optional portfolio concentration patterns.
+
+Flat-flat intervals, stale states, corrections presented as trades, and fabricated entry times are excluded from support.
+
+Complete-link clustering remains the first deterministic candidate because it resists chain-link merging. The existing V1 posture-distance implementation is a software baseline, not the final similarity definition.
+
+For cluster g, define one fixed cluster budget before seeing current direction. Exact clones divide that budget. Independent breadth SHOULD report both raw cluster count and an effective breadth measure, for example:
+
+[
+B_{eff}=1/sum_g w_g^2
+]
+
+where w_g are normalized independent cluster budgets actually admissible at the decision cut.
+
+Unknown similarity is not independence. New or low-support wallets use a declared newcomer/manual-group policy.
+
+## R4. Cohorts and skill must be point-in-time
+
+Cohort labels are research artifacts, not permanent identities. Candidate cohorts:
+
+- **alpha cohort**: lagged evidence of positive forecasting value;
+- **control cohort**: insufficient or neutral evidence;
+- **anti-alpha cohort**: lagged evidence of systematically adverse forecasting value.
+
+Cohort assignment must use only pre-period outcomes, have minimum support and shrinkage, and be frozen during each evaluation interval. A trader can change strategy; therefore cohort persistence and drift diagnostics are required.
+
+Do not weight by wallet capital. Skill weighting, if used, is based on lagged forecasting evidence at declared horizons and must preserve cluster budgets so clones cannot regain influence through quality weighting.
+
+## R5. Cohort state, flow, and divergence
+
+For cluster-level feature x_g and cluster budget w_g:
+
+[
+State_{a,t} = sum_g w_g,x^{state}_{g,a,t}
+]
+
+[
+Flow^{(h)}_{a,t} = sum_g w_g,x^{flow,(h)}_{g,a,t}
+]
+
+Maintain them separately.
+
+Candidate skill divergence:
+
+[
+D^{skill}=Evidence_{alpha}-Evidence_{anti}
+]
+
+Candidate market divergence:
+
+[
+D^{mkt}=Evidence_{experts}-Context_{market}
+]
+
+Do not define market context by a same-source transformation that mechanically duplicates the expert feature. Funding, open interest, liquidation metrics, volatility, and price response are optional context families and must each earn incremental value.
+
+## R6. Uncertainty is multidimensional
+
+Never publish one opaque confidence number from unrelated causes.
+
+Persist at least:
+
+- coverage/reliability mass;
+- independent breadth;
+- similarity support;
+- relative-conviction support;
+- skill/cohort support;
+- model calibration support;
+- latency/freshness;
+- explicit missing-information reasons.
+
+The existing V1 missing-mass interval remains useful for bounded posture consensus. It is not a statistical confidence interval.
+
+**Signal strength**, **confidence**, **crowding risk**, and **expected return** are distinct outputs.
+
+Expected return MUST remain null until a model is calibrated for a specific horizon and latency/cost assumption.
+
+## R7. Crowding and context
+
+Crowding is primarily a risk/context variable, not automatically a bearish or bullish predictor.
+
+Candidate descriptive inputs:
+
+- expert cohort leverage concentration;
+- independent-cluster directional concentration;
+- funding;
+- open interest level/change;
+- liquidation proximity where defensible;
+- market volatility;
+- price response after expert flow;
+- broad market positioning from an independent source.
+
+Universal same-direction expert positioning can mean strong information, clone/crowd redundancy, or liquidation fragility. The model must not infer which without evidence.
+
+## R8. Canonical evidence artifacts
+
+Persist immutable, replayable artifacts at these seams:
+
+### WalletEvidence
+- expert_id, instrument_id, horizon
+- raw_bias
+- bounded_influence by named baseline transform
+- portfolio_share
+- position_age / intent_age / observation_age
+- last_intent_event
+- multi-horizon intent_flow
+- reliability/missing reasons
+- as_of, knowledge_time
+- input evidence refs
+
+### IndependenceArtifact
+- model_revision
+- training_cutoff
+- pair support diagnostics
+- cluster memberships
+- cluster budgets
+- effective breadth
+- newcomer/unknown-similarity policy
+
+### CohortArtifact
+- cohort_revision
+- training/evaluation cutoff
+- membership and support
+- lagged performance definitions
+- shrinkage/uncertainty
+- drift flags
+
+### EnsembleEvidence
+- instrument_id, horizon
+- state evidence
+- flow evidence by horizon
+- relative-conviction summary
+- independent breadth
+- skill divergence
+- market divergence if available
+- crowding/context vector
+- coverage/uncertainty
+- supporting/opposing clusters
+- causal changes
+- baseline comparators
+
+### PredictiveEvidence
+Only promoted features and transformations, with:
+- candidate/model revision
+- frozen feature schema
+- training cutoff
+- calibration revision
+- latency/cost assumptions
+- historical support handles
+- current feature values
+- uncertainty/support
+
+### TradeSignal
+See R10.
+
+Each artifact carries input cut, schema/model/policy revision, as_of, knowledge_time, limitations, and evidence references. Lower-level information is never silently destroyed.
+
+## R9. Research ladder
+
+The ladder is deliberately finer than V1 so each source of claimed edge is isolated.
+
+- **B0 V1-bounded**: current equal-wallet bounded posture consensus.
+- **B1 raw-state**: preserve raw bias; aggregate only with bounded influence at the final vote seam.
+- **B2 independent-state**: B1 plus clone/cluster budgets.
+- **B3 independent-flow**: B2 plus intent flow as a separate output; no forced state+flow merge.
+- **B4 relative-conviction**: B3 plus trader-relative conviction.
+- **B5 skill-divergence**: B4 plus frozen alpha/control/anti-alpha cohort contrasts.
+- **B6 market-divergence/crowding**: B5 plus one context family at a time.
+- **B7 deterministic signal policy**: predeclared transparent mapping from the promoted evidence set to signal state/event.
+- **B8 calibrated expected-return model**: only if B7 leaves material exploitable structure and calibration is stable.
+- **B9 learned weighting/model**: only after transparent alternatives fail or a learned model shows robust incremental value.
+
+A later rung does not inherit promotion automatically. Every rung is compared to the strongest simpler qualified predecessor on the same frozen manifests.
+
+## R10. Signal policy and TradeSignal
+
+The V2 signal engine is a deterministic state machine over promoted predictive evidence.
+
+Canonical contract:
+
+```text
+TradeSignal
+  signal_id
+  instrument_id
+  horizon
+
+  state                  FLAT | LONG | SHORT
+  event                  ENTER | INCREASE | REDUCE | EXIT | REVERSE | NONE
+
+  state_evidence
+  flow_evidence
+  relative_conviction
+  independent_breadth
+  skill_divergence?
+  market_divergence?
+  crowding_risk?
+
+  signal_strength
+  confidence_components
+  expected_return?       # null until calibrated
+
+  supporting_clusters
+  opposing_clusters
+  missing_information
+  causal_changes
+  invalidation_conditions
+
+  baseline_comparators
+  evidence_refs
+
+  feature_revision
+  model_revision
+  policy_revision
+  universe_revision
+
+  as_of
+  knowledge_time
+```
+
+Signal event semantics compare the new policy state with the prior signal state. A trader REDUCE can weaken a long signal without creating a short signal. A flip may create REVERSE only if the policy crosses both exit and opposite-entry conditions.
+
+Hysteresis/noise bands are policy parameters selected before holdout evaluation. No constant is "optimal" because it exists in code.
+
+## R11. Exact evaluation protocol
+
+### R11.1 Dataset cuts
+
+Use chronological point-in-time cuts:
+- development/training;
+- validation/model-selection;
+- frozen historical holdout;
+- live-forward shadow interval.
+
+Wallet admission, cohort labels, relative scales, cluster artifacts, and context data must be available as-known at each cut.
+
+Today's wallet set may be evaluated as a conditional fixed-universe study, but that result MUST be labeled conditional and cannot claim survivorship-free discovery.
+
+### R11.2 Forward outcomes
+
+For every emitted evidence/signal record, attach later outcomes at fixed horizons:
+
+1m, 5m, 15m, 1h, 4h, 24h
+
+plus any strategy-specific horizon selected before evaluation.
+
+Record:
+- raw forward return;
+- return after declared latency;
+- return after cost/slippage model;
+- maximum favorable/adverse excursion;
+- volatility over horizon;
+- market regime/context;
+- availability/coverage at emission;
+- whether a later correction would have changed restated evidence.
+
+### R11.3 Metrics
+
+Evaluate:
+- conditional mean/median forward returns;
+- hit rate with uncertainty;
+- rank/linear information coefficient where meaningful;
+- monotonicity across signal-strength buckets;
+- monotonicity across confidence/support buckets;
+- calibration for any probability/expected-return output;
+- turnover and event rate;
+- latency sensitivity;
+- cost sensitivity;
+- regime stability;
+- independent breadth sensitivity;
+- missing-expert degradation;
+- crowding-state performance;
+- MFE/MAE;
+- drawdown for any explicit policy backtest;
+- search count and family-wise/model-selection burden.
+
+Use block/bootstrap or episode-aware uncertainty where temporal dependence is material. Do not treat repeated unchanged states as independent samples.
+
+### R11.4 Ablations
+
+At minimum run paired frozen-manifest ablations:
+
+1. raw bias retained vs early clipping-only representation;
+2. state-only vs flow-only vs state+flow;
+3. equal wallets vs independent cluster budgets;
+4. absolute bias vs relative conviction;
+5. no skill cohorts vs skill divergence;
+6. no anti-alpha vs anti-alpha divergence;
+7. no market context vs each context family individually;
+8. no crowding control vs crowding as risk gate vs crowding as predictor;
+9. equal cluster weights vs lagged quality weights;
+10. full model vs removal of each promoted feature family;
+11. zero/low/high latency and realistic cost assumptions;
+12. full expert availability vs controlled dropout.
+
+Every ablation stores the exact manifest and result, including negative results.
+
+## R12. Promotion gates
+
+Software correctness is necessary but not economic qualification.
+
+A candidate can be:
+- **IMPLEMENTED**: code/tests exist;
+- **REPLAY-VALID**: deterministic PIT replay and lineage pass;
+- **HISTORICALLY-SUPPORTED**: predeclared historical holdout shows incremental value;
+- **FORWARD-QUALIFIED**: frozen live-forward shadow period confirms the effect within declared uncertainty;
+- **ADVISORY-PROMOTED**: explicit policy approval enables the model in advisory runtime.
+
+Promotion requires:
+- no correctness regression;
+- no point-in-time violation;
+- predeclared primary metric and decision rule;
+- materially acceptable turnover/latency/cost behavior;
+- robustness across reasonable subperiods/regimes;
+- retained negative results and search count;
+- explicit approval.
+
+Do not use arbitrary fixed Sharpe/turnover constants as universal gates. Candidate acceptance thresholds belong in an experiment registration and must be justified before the holdout is observed.
+
+## R13. Minimum viable V2
+
+Build only enough to test the central thesis:
+
+1. persist raw bias beside bounded influence;
+2. derive reliable intent events and multi-horizon flow;
+3. expose position age vs intent age;
+4. use existing clone/cluster adjustment as an independence layer;
+5. add lagged relative conviction with UNKNOWN on low support;
+6. persist EnsembleEvidence with state and flow separate;
+7. attach frozen multi-horizon forward outcomes;
+8. compare B0-B4 using exact ablations;
+9. add a deterministic TradeSignal state machine only after at least one evidence representation demonstrates useful holdout structure;
+10. run live shadow forward qualification before advisory promotion.
+
+## R14. Explicitly out of V2 MVP
+
+Do NOT build yet:
+- neural networks, LLM scoring, or opaque end-to-end ML;
+- auto-discovered wallet universes presented as unbiased historical selections;
+- online self-updating production weights;
+- complex regime ensembles;
+- a generalized feature store platform;
+- Kafka/new microservices solely for scoring;
+- automatic financial execution;
+- expected-return numbers without calibration;
+- liquidation/crowding models that require unsupported data;
+- capital-weighted voting;
+- a single magic "confidence score";
+- automatic promotion from backtest results.
+
+## R15. Adversarial expected behavior
+
+| Scenario | Correct behavior |
+|---|---|
+| 15 clone wallets open the same trade | One independent cluster budget; breadth near one, not fifteen; clone event retained for diagnosis. |
+| Excellent trader uses unusually low bias | State direction can support the side, but relative conviction flags weak/unusual commitment; skill does not manufacture conviction. |
+| Bad cohort opposes good cohort | Preserve both; skill divergence may strengthen good-cohort evidence only if cohort labels are lagged and qualified. |
+| Every cohort is highly leveraged long | Strong descriptive state plus high crowding risk; confidence does not rise mechanically with crowding. |
+| One whale dominates capital | Raw bias remains visible; bounded/cluster influence prevents capital size from dominating vote. |
+| Stale equity | Wallet evidence unavailable for normalized bias; missing mass/support rises; no guessed fresh signal. |
+| Tiny new trade atop huge old position | Flow reflects only the small incremental change; state retains the large old bias. |
+| Bias moves +2x to +1x | REDUCE intent, positive state remains; flow is negative, not a new short. |
+| Experts remain long while price falls | State persists; flow may be zero; price-response/context can penalize confidence only if empirically promoted. |
+| Two independent clusters disagree | Preserve opposing cluster evidence and reduced net signal; do not average away disagreement diagnostics. |
+| Formerly independent trader begins copying | New similarity artifact can merge influence only after point-in-time support and membership policy permit it. |
+| Best expert changes strategy | Drift diagnostics lower support; old quality cannot persist indefinitely without requalification. |
+| New wallet with no history | Current raw bias may be descriptive; relative conviction/skill are UNKNOWN; conservative newcomer influence policy applies. |
+
+## R16. Resource and agent ergonomics
+
+Persist reusable feature/state partitions and forward outcomes incrementally. Research jobs consume sealed manifests and checkpoints; do not recalculate the full world on each experiment.
+
+An agent must be able to answer from bounded interfaces:
+- why the signal has this direction;
+- which clusters contributed;
+- what changed now vs persisted;
+- whether current exposure is unusual for each trader;
+- how much support is independent;
+- which evidence is predictive vs merely descriptive;
+- how the signal compares with B0/B1/B2;
+- what data are missing;
+- what would invalidate the signal;
+- which model/policy revision produced it;
+- what historical and live-forward evidence supports that revision.
+
+Negative experiments are first-class evidence.

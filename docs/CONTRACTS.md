@@ -121,3 +121,23 @@ Schema evolution is additive within a compatible version; semantic changes requi
 Bind machine interfaces locally/private by default; authenticate and authorize any remote exposure. Observation credentials never include exchange signing authority. Redact secrets from evidence and error payloads. Validate untrusted labels and source text as data, including when rendered in Telegram or returned to an agent.
 
 Replay uses isolated storage and an effect-disabled environment: no Telegram sends, broker writes, live configuration edits, or credential inheritance. Live effects require an explicit, separate adapter plus authority. Runtime side effects are controlled by [OPERATIONS](OPERATIONS.md), not by source-event content.
+
+## C8. V2 scoring and signal artifacts
+
+V2 introduces an interpretation seam above the authoritative account projection. These artifacts are owned by the Python expert-engine and never become source truth for exchange accounting.
+
+**WalletEvidence** MUST preserve raw unclipped equity bias and any bounded influence transform as separate fields. It also carries portfolio share where observable, position/intent/observation ages, the most recent verified intent event, multi-horizon intent flow, reliability/missing reasons, input state revisions, `as_of`, `knowledge_time`, and evidence references. Reconciliation, mark-only change, and equity-only change cannot be encoded as OPEN/ADD/REDUCE/CLOSE/FLIP intent.
+
+**IndependenceArtifact** carries feature/model revision, training cutoff, pair support diagnostics, cluster membership, cluster budgets, effective breadth, unknown-similarity/newcomer treatment, and assignment effective time. As-known replay cannot use an artifact trained on later behavior.
+
+**CohortArtifact** carries lagged cohort membership, support/shrinkage diagnostics, training/evaluation cutoffs, effective interval, and drift flags. Alpha/control/anti-alpha labels are research interpretations, not permanent wallet identities.
+
+**EnsembleEvidence** carries state evidence and flow evidence separately, relative-conviction summaries, independent breadth, supporting/opposing clusters, missing information, optional skill/market divergence and crowding/context values, causal changes, and V1/simple-baseline comparators. It is descriptive until a promoted model explicitly consumes selected fields.
+
+**PredictiveEvidence** contains only feature families that passed the declared research gate for its model revision. It binds the frozen feature schema, training cutoff, calibration revision if any, latency/cost assumptions, historical-support handles, current values, and support/uncertainty. An unpromoted descriptive feature cannot silently enter this artifact.
+
+**TradeSignal** is account-independent and contains `signal_id`, instrument, horizon, state (`FLAT|LONG|SHORT`), event (`ENTER|INCREASE|REDUCE|EXIT|REVERSE|NONE`), signal strength, structured confidence/support, optional expected return, crowding risk, supporting/opposing clusters, missing information, causal changes, invalidation conditions, baseline comparators, evidence refs, feature/model/policy/universe revisions, `as_of`, and `knowledge_time`. `expected_return` MUST be absent/null until a calibration qualification exists for that horizon and assumptions.
+
+**OutcomeRecord** is appended only after the future horizon becomes knowable. It references the immutable original evidence/signal and records declared-latency prices, forward returns, cost-adjusted returns, MFE/MAE, context/coverage at emission, correction/restatement flags, and outcome knowledge time. Attaching an outcome can never alter the original decision or its as-known features.
+
+All V2 artifacts use deterministic serialization/hash rules for replay equivalence. Model or policy changes create new artifacts and decisions rather than rewriting prior ones. See [RESEARCH](RESEARCH.md) and [QUALIFICATION](QUALIFICATION.md).

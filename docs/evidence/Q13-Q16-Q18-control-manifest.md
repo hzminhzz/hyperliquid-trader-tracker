@@ -13,7 +13,7 @@
 
 ## 1. Summary of Deliverables Qualified
 
-This manifest certifies completion of slice **S5**, establishing the operations facade, typed plans, authority escalation defenses, idempotency receipts, prompt injection sanitization, and knowledge retention runbooks per Contracts [OPERATIONS](docs/OPERATIONS.md) O4–O8 and [QUALIFICATION](docs/QUALIFICATION.md) Q13, Q16, Q18:
+This manifest certifies completion of slice **S5**, establishing the operations facade, typed plans, authority escalation defenses, idempotency receipts, prompt injection sanitization, and knowledge retention runbooks per Contracts [OPERATIONS](../OPERATIONS.md) O4–O8 and [QUALIFICATION](../QUALIFICATION.md) Q13, Q16, Q18:
 
 ### Qualified Acceptance Scenarios
 
