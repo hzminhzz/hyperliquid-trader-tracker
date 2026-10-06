@@ -6,7 +6,9 @@ ER0 (#31) is **ENGINEERING_PASS / LIVE_SOURCE_CAPSULE_BLOCKED** on the milestone
 
 Verification: tracker `make check-rs` passes (98 Rust unit tests, 11 adversarial-observation tests, 9 crash-recovery tests); companion engine passes Ruff, `ty`, and **81 tests**. The existing local observation ledger was inspected read-only but has `current_seq = 0`, so no real source receipt-to-projection capsule or latency/coverage qualification is claimed. See [ER0 evidence](evidence/execution-review/ER0-source-state-authority.md). No deployment, financial execution, or predictive promotion was performed.
 
-The next implementation frontier is ER1 additive point-in-time path evidence. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
+ER1 (#25) is now **ENGINEERING_PASS** in companion engine revision `79d3e5c`: raw signed quantity is the additive primitive; event time controls horizon membership while knowledge time controls visibility; net/gross flow is accumulated before one common normalization anchor; stale/missing equity preserves raw flow while normalized flow is unavailable. The engine passes Ruff, `ty`, and **88 tests**. See [ER1 evidence](evidence/execution-review/ER1-additive-path.md).
+
+The next implementation frontier is ER2/ER3. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
 
 ## Latest inspection: execution and sampling review, 2026-10-06
 
