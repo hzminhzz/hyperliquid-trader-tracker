@@ -2,6 +2,8 @@
 
 This master index aggregates all qualification manifests across slices **S0 through S8** for the **Agent-operable expert ensemble V1** milestone, reporting **Engineering**, **Operational Ergonomics**, **Resource Use**, and **Economic Results** separately per [QUALIFICATION](../QUALIFICATION.md) and [plan.md](../../plan.md).
 
+V2 evidence is indexed separately at [v2/INDEX.md](v2/INDEX.md) so historical V1 engineering evidence is not conflated with V2 predictive qualification.
+
 ---
 
 ## 1. Slice Manifest Ledger
