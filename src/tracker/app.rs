@@ -309,17 +309,23 @@ async fn amain(settings: Settings) -> Result<()> {
     {
         let app = Arc::new(Application::new(token));
         sender = Arc::new(TelegramSender::new(Arc::clone(&app)));
-        // PORT NOTE: in Python, *constructing* SettingsBot registered the handlers on the
-        // Application; here handler dispatch lives in handle_update, fed by the poll loop.
-        settings_bot = Some(Arc::new(SettingsBot::new(
-            settings.clone(),
-            Arc::clone(&app),
-            Arc::clone(&db),
-            Arc::clone(&book),
-            Arc::clone(&registry),
-            Arc::clone(&enricher),
-        )?));
-        application = Some(app);
+        if settings.telegram_polling_enabled {
+            // PORT NOTE: in Python, *constructing* SettingsBot registered the handlers on the
+            // Application; here handler dispatch lives in handle_update, fed by the poll loop.
+            settings_bot = Some(Arc::new(SettingsBot::new(
+                settings.clone(),
+                Arc::clone(&app),
+                Arc::clone(&db),
+                Arc::clone(&book),
+                Arc::clone(&registry),
+                Arc::clone(&enricher),
+            )?));
+            application = Some(app);
+        } else {
+            tracing::info!(
+                "Telegram send-only mode enabled; command polling is disabled for this process"
+            );
+        }
     } else {
         tracing::warn!("no TELEGRAM_BOT_TOKEN configured — notifications will be logged only");
         sender = Arc::new(LoggingSender::default());
