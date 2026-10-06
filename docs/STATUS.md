@@ -14,7 +14,9 @@ ER3 (#27) is **ENGINEERING_PASS / LIVE-COVERAGE-MEASUREMENT-BLOCKED** in compani
 
 ER4 (#28) is **PROTOCOL_ENGINEERING_PASS / EMPIRICAL_EVALUATION_BLOCKED** in companion engine revision `f3ae0be`: R0/R1/R2 are frozen, direction-before-cost outcome semantics and price-lateness censoring are qualified, and absent/immature prospective data returns BLOCKED rather than promotion. The engine full suite passes **106 tests**. See [ER4 evidence](evidence/execution-review/ER4-representation-experiment.md).
 
-The next implementation frontier is ER5. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
+ER5 (#29) is **PROTOCOL_ENGINEERING_PASS / NEW-HOLDOUT-BLOCKED** in companion engine revision `ae7cfe6`: Stage 2 is separated from ER4, registers 60s/300s/hybrid/exposure-event clocks, uses an as-known common grid plus chronological target-change replay, and blocks when no new untouched holdout exists. The engine full suite passes **111 tests**. See [ER5 evidence](evidence/execution-review/ER5-cadence-universe.md).
+
+The next implementation frontier is ER6 qualification. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
 
 ## Latest inspection: execution and sampling review, 2026-10-06
 
