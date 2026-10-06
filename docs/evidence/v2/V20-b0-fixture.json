@@ -1,0 +1,24 @@
+{
+  "manifest_id": "v20-b0-exact-fixture-v1",
+  "engine_revision": "bf88f7a0e02f1b7b27ca95666367fd4613f0f0a6",
+  "policy": {
+    "name": "B0-v1-equal-budget-bounded-consensus",
+    "k_scale": "1.0",
+    "max_equity_age_minutes": 15.0
+  },
+  "coin": "BTC",
+  "experts": [
+    {"expert_id": "0xlong1", "quantity": "1.0", "valuation_price": "100", "equity": "100", "equity_age_minutes": 0.0},
+    {"expert_id": "0xlonghalf", "quantity": "0.5", "valuation_price": "100", "equity": "100", "equity_age_minutes": 0.0},
+    {"expert_id": "0xflat", "quantity": "0.0", "valuation_price": "100", "equity": "100", "equity_age_minutes": 0.0},
+    {"expert_id": "0xmissing", "quantity": "1.0", "valuation_price": "100", "equity": null, "equity_age_minutes": 0.0}
+  ],
+  "expected": {
+    "observed_target": "0.375",
+    "missing_mass": "0.25",
+    "lower_bound": "0.125",
+    "upper_bound": "0.625",
+    "is_actionable": true,
+    "blocker_code": null
+  }
+}
