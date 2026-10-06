@@ -18,12 +18,13 @@ use futures_util::FutureExt;
 use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
 
-use crate::book::InMemoryBook;
+use crate::book::{InMemoryBook, ReconcileOutcome};
 use crate::bot::{Application, SettingsBot, TelegramSender};
 use crate::config::{Settings, load_env};
 use crate::db::{Subscription, WatchlistDB};
 use crate::enrich::Enricher;
 use crate::hl_client::{HyperliquidClient, InfoClient};
+use crate::ledger::ObservationLedger;
 use crate::listener::Listener;
 use crate::notifier::{LoggingSender, MessageSender, Notifier};
 use crate::pnl::ClosedPnlResolver;
@@ -91,6 +92,35 @@ fn group_by_address(subs: Vec<Subscription>) -> HashMap<String, Vec<Subscription
 }
 
 /// Seed each unique wallet once, then admit all its subscribers (seed-before-admit).
+async fn seed_desired_and_admit(
+    enricher: Arc<Enricher>,
+    registry: Arc<Mutex<Registry>>,
+    addresses: Vec<String>,
+    concurrency: usize,
+) {
+    let sem = Arc::new(Semaphore::new(concurrency));
+    let futures = addresses.into_iter().map(|address| {
+        let enricher = Arc::clone(&enricher);
+        let registry = Arc::clone(&registry);
+        let sem = Arc::clone(&sem);
+        async move {
+            let _permit = sem.acquire().await.expect("semaphore closed");
+            match enricher.seed_wallet(&address).await {
+                ReconcileOutcome::Applied | ReconcileOutcome::SkippedRace => {
+                    registry
+                        .lock()
+                        .expect("registry mutex poisoned")
+                        .add_desired(&address);
+                }
+                ReconcileOutcome::Failed => {
+                    tracing::warn!("desired wallet seed failed; not admitting {address}");
+                }
+            }
+        }
+    });
+    futures_util::future::join_all(futures).await;
+}
+
 async fn seed_and_admit(
     enricher: Arc<Enricher>,
     registry: Arc<Mutex<Registry>>,
@@ -165,6 +195,23 @@ async fn reconcile_loop(
             )
             .await;
         }
+        let pending_desired: Vec<String> = {
+            let registry_guard = registry.lock().expect("registry mutex poisoned");
+            settings
+                .desired_wallets_list()
+                .into_iter()
+                .filter(|addr| !registry_guard.is_tracked(addr))
+                .collect()
+        };
+        if !pending_desired.is_empty() {
+            seed_desired_and_admit(
+                Arc::clone(&enricher),
+                Arc::clone(&registry),
+                pending_desired,
+                settings.seed_concurrency,
+            )
+            .await;
+        }
         let tracked: Vec<String> = {
             let registry_guard = registry.lock().expect("registry mutex poisoned");
             let mut tracked: Vec<String> = registry_guard.addresses().iter().cloned().collect();
@@ -230,6 +277,9 @@ async fn amain(settings: Settings) -> Result<()> {
     let mut db = WatchlistDB::new(settings.db_path.clone());
     db.connect().await?;
     let db = Arc::new(db);
+    let mut ledger = ObservationLedger::new(settings.ledger_path.clone());
+    ledger.connect().await?;
+    let ledger = Arc::new(ledger);
     let book = Arc::new(Mutex::new(InMemoryBook::new()));
     let registry = Arc::new(Mutex::new(Registry::new()));
     let stop = CancellationToken::new();
@@ -289,7 +339,8 @@ async fn amain(settings: Settings) -> Result<()> {
         notifier,
         Arc::clone(&client),
         pnl_resolver,
-    );
+    )
+    .with_ledger(Arc::clone(&ledger));
     let listener_stop = listener.stop_token();
 
     // PORT NOTE: `loop.add_signal_handler(sig, lambda: (stop.set(), listener.stop()))` →
@@ -325,6 +376,7 @@ async fn amain(settings: Settings) -> Result<()> {
     }
 
     let subscriptions = retain_allowed(db.all().await?, &allowed);
+    let desired_wallets = settings.desired_wallets_list();
     let listener_task = tokio::spawn({
         // The listener only returns once stop is set; if it ever exits unexpectedly — by
         // returning OR by panicking — trip stop so the process shuts down cleanly instead
@@ -361,12 +413,18 @@ async fn amain(settings: Settings) -> Result<()> {
         group_by_address(subscriptions),
         settings.seed_concurrency,
     ));
+    let desired_seed_task = tokio::spawn(seed_desired_and_admit(
+        Arc::clone(&enricher),
+        Arc::clone(&registry),
+        desired_wallets,
+        settings.seed_concurrency,
+    ));
 
     stop.cancelled().await;
 
     // PORT NOTE: `for task in tasks: task.cancel()` + gather(return_exceptions=True) →
     // abort + await each handle, swallowing the JoinError a cancellation produces.
-    let mut tasks = vec![listener_task, reconcile_task, seed_task];
+    let mut tasks = vec![listener_task, reconcile_task, seed_task, desired_seed_task];
     if let Some(task) = poll_task {
         tasks.push(task);
     }

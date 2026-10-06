@@ -1,0 +1,16 @@
+[Unit]
+Description=Copytrade Hyperliquid observation tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/quant/dev/hyperliquid-trader-tracker
+EnvironmentFile=/home/quant/dev/hyperliquid-trader-tracker/.env
+ExecStart=/home/quant/dev/hyperliquid-trader-tracker/target/release/hl-tracker
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

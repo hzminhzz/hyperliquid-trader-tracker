@@ -439,13 +439,16 @@ impl Listener {
                 }
             }
             for fill in fills {
-                let result = self.book.lock().expect("book mutex poisoned").ingest(
-                    &fill.address,
-                    &fill.coin,
-                    fill.delta,
-                    fill.px,
-                    fill.ts,
-                );
+                let (result, before_rev, after_rev, generation, coverage) = {
+                    let mut book = self.book.lock().expect("book mutex poisoned");
+                    let before_rev = book.state_revision(&fill.address);
+                    let result =
+                        book.ingest(&fill.address, &fill.coin, fill.delta, fill.px, fill.ts);
+                    let after_rev = book.state_revision(&fill.address);
+                    let generation = book.generation(&fill.address);
+                    let coverage = book.coverage_state(&fill.address);
+                    (result, before_rev, after_rev, generation, coverage)
+                };
                 if result.events.is_empty() {
                     continue;
                 }
@@ -459,11 +462,22 @@ impl Listener {
                         opened_at: s.opened_at,
                         last_added_at: s.last_added_at,
                         realized_pnl: s.realized_pnl,
-                        revision: 1,
-                        generation: 1,
-                        coverage: "Seeded".to_string(),
+                        revision: after_rev,
+                        generation,
+                        coverage: format!("{coverage:?}"),
                         updated_at: Utc::now(),
                     });
+                    let transition = if result.events.len() > 1 {
+                        "FLIP".to_string()
+                    } else {
+                        result.events[0].kind.to_string().to_ascii_uppercase()
+                    };
+                    let quantity_after = result
+                        .state
+                        .as_ref()
+                        .map(|s| s.szi)
+                        .unwrap_or(Decimal::ZERO);
+                    let avg_entry = result.state.as_ref().map(|s| s.avg_entry);
                     let _ = ledger
                         .commit_transition(TransitionParams {
                             receipt_id: receipt_id_opt.unwrap_or(0),
@@ -471,12 +485,21 @@ impl Listener {
                             coin: fill.coin.clone(),
                             checkpoint: cp,
                             event_kind: "POSITION_CHANGE".to_string(),
-                            instrument_id: format!("hyperliquid:mainnet:perp:default:{}", fill.coin),
+                            instrument_id: format!(
+                                "hyperliquid:mainnet:perp:default:{}",
+                                fill.coin
+                            ),
                             event_time: fill.ts,
                             received_at: Utc::now(),
-                            before_rev: 0,
-                            after_rev: 1,
-                            payload: json!({"delta": fill.delta.to_string(), "px": fill.px.to_string()}),
+                            before_rev,
+                            after_rev,
+                            payload: json!({
+                                "transition": transition,
+                                "delta": fill.delta.to_string(),
+                                "quantity_after": quantity_after.to_string(),
+                                "avg_entry": avg_entry.map(|v| v.to_string()),
+                                "px": fill.px.to_string()
+                            }),
                         })
                         .await;
                 }

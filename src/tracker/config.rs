@@ -146,8 +146,12 @@ pub struct Settings {
     /// Constraint: ge=0.0, le=10.0.
     pub closed_pnl_retry_delay_s: f64,
 
-    // --- Persistence (the ONLY thing stored: per-subscriber watchlists) ---
+    // --- Persistence ---
     pub db_path: PathBuf,
+    /// Durable observation ledger consumed read-only by the expert ensemble.
+    pub ledger_path: PathBuf,
+    /// Comma-separated read-only expert universe, independent of Telegram subscribers.
+    pub desired_wallets: String,
 
     // --- Telegram delivery ---
     /// This is a MULTI-TENANT public bot: anyone can message it, subscribe to wallets, and
@@ -188,6 +192,8 @@ impl Default for Settings {
             // PORT NOTE: Python defaulted to `<repo root>/tracker.db` via `__file__`;
             // cwd-relative is the compiled-binary equivalent (module doc has the rationale).
             db_path: PathBuf::from("tracker.db"),
+            ledger_path: PathBuf::from("observation.db"),
+            desired_wallets: String::new(),
             telegram_bot_token: None,
             allowed_chat_ids: String::new(),
             admin_chat_id: String::new(),
@@ -258,6 +264,12 @@ impl Settings {
         }
         if let Some(v) = get_env("TRACKER_DB_PATH") {
             s.db_path = PathBuf::from(v);
+        }
+        if let Some(v) = get_env("TRACKER_LEDGER_PATH") {
+            s.ledger_path = PathBuf::from(v);
+        }
+        if let Some(v) = get_env("TRACKER_DESIRED_WALLETS") {
+            s.desired_wallets = v;
         }
         // AliasChoices order: the un-prefixed conventional name wins over the prefixed one.
         s.telegram_bot_token =
@@ -402,6 +414,15 @@ impl Settings {
             .map(str::trim)
             .filter(|c| !c.is_empty())
             .map(String::from)
+            .collect()
+    }
+
+    pub fn desired_wallets_list(&self) -> Vec<String> {
+        self.desired_wallets
+            .split(',')
+            .map(str::trim)
+            .filter(|a| !a.is_empty())
+            .map(|a| a.to_ascii_lowercase())
             .collect()
     }
 }
