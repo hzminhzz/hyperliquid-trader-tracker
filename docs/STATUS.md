@@ -16,7 +16,9 @@ ER4 (#28) is **PROTOCOL_ENGINEERING_PASS / EMPIRICAL_EVALUATION_BLOCKED** in com
 
 ER5 (#29) is **PROTOCOL_ENGINEERING_PASS / NEW-HOLDOUT-BLOCKED** in companion engine revision `ae7cfe6`: Stage 2 is separated from ER4, registers 60s/300s/hybrid/exposure-event clocks, uses an as-known common grid plus chronological target-change replay, and blocks when no new untouched holdout exists. The engine full suite passes **111 tests**. See [ER5 evidence](evidence/execution-review/ER5-cadence-universe.md).
 
-The next implementation frontier is ER6 qualification. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
+ER6 (#30) is **DESCRIPTIVE ENGINEERING COMPLETE / PREDICTIVE QUALIFICATION BLOCKED**: companion engine qualification logic separates engineering, descriptive, historical-predictive, live-forward, production-advisory, and financial-execution authority. With ER4/ER5 prospectively blocked, predictive emission stays disabled, no policy is promoted, expected-return calibration is unavailable, and financial execution remains forbidden. The companion engine passes Ruff, focused `ty`, and **115 tests**. See [ER6 decision](evidence/execution-review/ER6-qualification-decision.md).
+
+All ER0-ER6 implementation/protocol slices in milestone #3 are now materialized on the milestone branch. Empirical gates that require future recorded observations remain BLOCKED by design; they must not be converted into production or predictive claims merely because the implementation issues are complete.
 
 ## Latest inspection: execution and sampling review, 2026-10-06
 

@@ -6,7 +6,7 @@
 
 Read [EXECUTION-REVIEW](docs/EXECUTION-REVIEW.md) for the inspected findings, proposed state machines and registered experiment design. Current inspected heads are tracker `2f948f8` and engine `ef8d7c1`; the engine's 79 passing tests do not establish live V2 integration or predictive value. [STATUS](docs/STATUS.md) owns the current claim boundary.
 
-Execution status on the milestone branch: ER0 is engineering-complete with its real-source capsule still BLOCKED by an empty recorded ledger; see `docs/evidence/execution-review/ER0-source-state-authority.md`. ER1 is the next dependency frontier. Later packages remain evidence-gated.
+Execution status on the milestone branch: ER0-ER6 implementation/protocol slices are complete. ER0/ER2/ER3 empirical live-source sub-gates remain BLOCKED by absent recorded traffic; ER4 has no prospective outcome-mature rows; ER5 has no independent untouched Stage-2 holdout; ER6 therefore keeps predictive emission disabled. See `docs/evidence/execution-review/`. New data may advance the evidence gates later without rewriting these completed implementation slices.
 
 The following are the materialized execution work packages; their acceptance evidence, not this table, determines completion:
 
