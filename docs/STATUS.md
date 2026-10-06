@@ -10,7 +10,9 @@ ER1 (#25) is now **ENGINEERING_PASS** in companion engine revision `79d3e5c`: ra
 
 ER2 (#26) is **ENGINEERING_PASS / NATIVE-LIVE-SOURCE-BLOCKED** in companion engine revision `4c537a4`: native references remain observed-only, inferred segments are deterministic optional annotations, and mixed/two-sided activity abstains from a directional story. The engine passes Ruff, `ty`, and **97 tests**. See [ER2 evidence](evidence/execution-review/ER2-execution-annotations.md).
 
-The next implementation frontier is ER3. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
+ER3 (#27) is **ENGINEERING_PASS / LIVE-COVERAGE-MEASUREMENT-BLOCKED** in companion engine revision `1da1321`: coherent minute cuts carry all revisions/watermarks, material interrupts coalesce to the latest contribution, normalized wallet flow is bounded before fixed cluster budgets, and missing mass is not silently reallocated. The engine passes Ruff, `ty`, and **101 tests**. See [ER3 evidence](evidence/execution-review/ER3-coherent-cuts.md).
+
+The next implementation frontier is ER4. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
 
 ## Latest inspection: execution and sampling review, 2026-10-06
 
