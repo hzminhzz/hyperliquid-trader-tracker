@@ -1,0 +1,23 @@
+{
+  "capsule_id": "V26",
+  "qualification_class": "HISTORICAL_PREDICTIVE",
+  "status": "INCONCLUSIVE",
+  "reason": "NO_POINT_IN_TIME_V2_OUTCOME_SAMPLE",
+  "search_count": 0,
+  "data_audit": {
+    "observation_outbox_events": 0,
+    "projected_positions": 6,
+    "expert_equity_rows": 3,
+    "v2_outcome_store_present": false
+  },
+  "comparisons": [
+    {"baseline": "B0", "candidate": "B1", "status": "INCONCLUSIVE"},
+    {"baseline": "B1", "candidate": "B2", "status": "INCONCLUSIVE"},
+    {"baseline": "B2", "candidate": "B3", "status": "INCONCLUSIVE"},
+    {"baseline": "B3", "candidate": "B4", "status": "INCONCLUSIVE"},
+    {"baseline": "B2", "candidate": "state_plus_flow", "status": "INCONCLUSIVE"},
+    {"baseline": "B4", "candidate": "latency_cost", "status": "INCONCLUSIVE"},
+    {"baseline": "B4", "candidate": "expert_dropout", "status": "INCONCLUSIVE"}
+  ],
+  "promoted_candidate": null
+}

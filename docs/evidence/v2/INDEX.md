@@ -12,7 +12,7 @@ This index separates engineering/descriptive evidence from historical predictive
 | V23 | #15 | [V23-conviction-manifest.md](V23-conviction-manifest.md) | DESCRIPTIVE | PASS |
 | V24 | #16 | [V24-ensemble-evidence-manifest.md](V24-ensemble-evidence-manifest.md) | DESCRIPTIVE | PASS |
 | V25 | #17 | [V25-outcome-ledger-manifest.md](V25-outcome-ledger-manifest.md) | ENGINEERING | PASS |
-| V26 | #18 | pending | HISTORICAL_PREDICTIVE | PENDING |
+| V26 | #18 | [V26-ablation-manifest.md](V26-ablation-manifest.md) | HISTORICAL_PREDICTIVE | INCONCLUSIVE |
 | V27 | #19 | pending | HISTORICAL_PREDICTIVE | PENDING |
 | V28 | #20 | pending | HISTORICAL_PREDICTIVE | PENDING |
 | V29 | #21 | pending | HISTORICAL_PREDICTIVE / ENGINEERING | PENDING |
