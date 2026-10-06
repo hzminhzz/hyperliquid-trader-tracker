@@ -15,6 +15,6 @@ This index separates engineering/descriptive evidence from historical predictive
 | V26 | #18 | [V26-ablation-manifest.md](V26-ablation-manifest.md) | HISTORICAL_PREDICTIVE | INCONCLUSIVE |
 | V27 | #19 | [V27-skill-cohort-decision.md](V27-skill-cohort-decision.md) | HISTORICAL_PREDICTIVE | NOT_ACTIVATED |
 | V28 | #20 | [V28-market-context-decision.md](V28-market-context-decision.md) | HISTORICAL_PREDICTIVE | NOT_ACTIVATED |
-| V29 | #21 | pending | HISTORICAL_PREDICTIVE / ENGINEERING | PENDING |
+| V29 | #21 | [V29-signal-policy-manifest.md](V29-signal-policy-manifest.md) | HISTORICAL_PREDICTIVE / ENGINEERING | REJECTED / ENGINEERING_PASS |
 | V30 | #22 | pending | LIVE_FORWARD | PENDING |
 | V31 | #23 | pending | ADVISORY_PRODUCTION | PENDING |
