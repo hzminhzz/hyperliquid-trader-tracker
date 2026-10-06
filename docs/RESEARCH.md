@@ -1,6 +1,10 @@
 # Ensemble semantics and V2 signal research
 
-**Status:** authoritative research and signal-engine specification. V1 consensus remains the live descriptive baseline. Nothing in this document promotes a predictive model by prose alone.
+**Status:** authoritative research and signal-engine specification. The inspected runtime still uses the V1 descriptive baseline; this is not a live-health assertion. Nothing in this document promotes a predictive model by prose alone.
+
+**Proposed execution amendment (2026-10-06):** [EXECUTION-REVIEW](EXECUTION-REVIEW.md) records the current audit and proposed next experiment. Its sections 5-8 refine flow, materiality, segmentation and clocks; sections 9-10 define new acceptance and evaluation cases. The existing R2.4 known-time-only flow formula below is the prior V2 proposal, not the recommended next-stage default: execution recency must use event time while visibility uses knowledge time. Older backfill cannot become fresh intent merely on arrival. Common-anchor net/gross quantity flow, explicit missing normalization, optional uncertain episode annotations and bounded flow influence are the proposed replacements. Current code must not be represented as implementing those replacements.
+
+For the proposed experiment, keep costs outside the directional sign transform; bound outcome-price lateness and track price availability; evaluate all clocks on common market-time rows with dependence-aware uncertainty. Selecting a representation in Stage 1 consumes that holdout: Stage 2 must use a new untouched evaluation interval or an independently frozen protocol. Predictive promotion remains blocked until the corresponding evidence exists.
 
 ## R1. Separate observation, description, prediction, and action
 

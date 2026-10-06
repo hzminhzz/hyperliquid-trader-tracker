@@ -15,13 +15,16 @@ use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
 use serde_json::{Value, json};
-use tokio::sync::Semaphore;
+use tokio::sync::{Mutex as AsyncMutex, Semaphore};
 
 use crate::book::{InMemoryBook, ReconcileOutcome};
 use crate::config::Settings;
 use crate::exceptions::TrackerError;
 use crate::hl_client::InfoClient;
-use crate::models::{self, AccountPosition, CoverageState, build_position, parse_account_equity};
+use crate::ledger::{ObservationLedger, PositionCheckpoint, WalletSnapshotParams};
+use crate::models::{
+    self, AccountEquity, AccountPosition, CoverageState, build_position, parse_account_equity,
+};
 use crate::resolve::seed_state_from_row;
 use crate::scheduler::RequestScheduler;
 use crate::state::PositionState;
@@ -56,6 +59,8 @@ pub struct Enricher {
     book: Arc<Mutex<InMemoryBook>>,
     client: Arc<dyn InfoClient>,
     scheduler: RequestScheduler,
+    state_gate: Arc<AsyncMutex<()>>,
+    ledger: Option<Arc<ObservationLedger>>,
 }
 
 /// Summary of outcomes from batch seeding/reconciling.
@@ -77,6 +82,8 @@ impl Enricher {
             book,
             client,
             scheduler: RequestScheduler::default(),
+            state_gate: Arc::new(AsyncMutex::new(())),
+            ledger: None,
         }
     }
 
@@ -91,11 +98,23 @@ impl Enricher {
             book,
             client,
             scheduler,
+            state_gate: Arc::new(AsyncMutex::new(())),
+            ledger: None,
         }
     }
 
     pub fn scheduler(&self) -> &RequestScheduler {
         &self.scheduler
+    }
+
+    pub fn with_state_gate(mut self, state_gate: Arc<AsyncMutex<()>>) -> Self {
+        self.state_gate = state_gate;
+        self
+    }
+
+    pub fn with_ledger(mut self, ledger: Arc<ObservationLedger>) -> Self {
+        self.ledger = Some(ledger);
+        self
     }
 
     /// Snapshot `address`'s positions and reseed the book. Returns `false` on failure.
@@ -111,13 +130,85 @@ impl Enricher {
             .expect("book mutex poisoned")
             .fill_epoch(address);
         match self.snapshot_positions(address).await {
-            Ok((states, leverage)) => self
-                .book
-                .lock()
-                .expect("book mutex poisoned")
-                .reseed_wallet(address, states, leverage, Some(epoch)),
+            Ok((states, leverage, equity, raw, observed_at)) => {
+                let receipt_id = if let Some(ledger) = &self.ledger {
+                    let source_key = format!(
+                        "{}:{}",
+                        address.to_ascii_lowercase(),
+                        observed_at.timestamp_micros()
+                    );
+                    match ledger
+                        .append_receipt("rest:clearinghouseState", &source_key, &raw, observed_at)
+                        .await
+                    {
+                        Ok((id, _)) => Some(id),
+                        Err(err) => {
+                            tracing::error!(
+                                "seed: durable snapshot receipt failed for {address}: {err}"
+                            );
+                            return ReconcileOutcome::Failed;
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                let _gate = self.state_gate.lock().await;
+                let mut staged = self.book.lock().expect("book mutex poisoned").clone();
+                if let Some(eq) = equity.clone() {
+                    staged.set_equity(eq);
+                }
+                let outcome = staged.reseed_wallet(address, states.clone(), leverage, Some(epoch));
+                if outcome != ReconcileOutcome::Applied {
+                    return outcome;
+                }
+
+                if let (Some(ledger), Some(receipt_id)) = (&self.ledger, receipt_id) {
+                    let revision = staged.state_revision(address);
+                    let generation = staged.generation(address);
+                    let coverage = format!("{:?}", staged.coverage_state(address));
+                    let checkpoints = states
+                        .iter()
+                        .map(|state| PositionCheckpoint {
+                            address: state.address.clone(),
+                            coin: state.coin.clone(),
+                            szi: state.szi,
+                            direction: state.direction,
+                            avg_entry: state.avg_entry,
+                            opened_at: state.opened_at,
+                            last_added_at: state.last_added_at,
+                            realized_pnl: state.realized_pnl,
+                            revision,
+                            generation,
+                            coverage: coverage.clone(),
+                            updated_at: observed_at,
+                        })
+                        .collect();
+                    if let Err(err) = ledger
+                        .commit_wallet_snapshot(WalletSnapshotParams {
+                            receipt_id,
+                            wallet_id: address.to_string(),
+                            checkpoints,
+                            equity,
+                            observed_at,
+                            before_rev: epoch,
+                            after_rev: revision,
+                        })
+                        .await
+                    {
+                        tracing::error!(
+                            "seed: durable snapshot commit failed for {address}; state not published: {err}"
+                        );
+                        return ReconcileOutcome::Failed;
+                    }
+                }
+
+                *self.book.lock().expect("book mutex poisoned") = staged;
+                ReconcileOutcome::Applied
+            }
             Err(err) => {
                 tracing::error!("seed: clearinghouseState failed for {address}: {err:?}");
+                let _gate = self.state_gate.lock().await;
                 self.book
                     .lock()
                     .expect("book mutex poisoned")
@@ -190,19 +281,23 @@ impl Enricher {
     async fn snapshot_positions(
         &self,
         address: &str,
-    ) -> Result<(Vec<PositionState>, HashMap<String, i64>), SeedError> {
+    ) -> Result<
+        (
+            Vec<PositionState>,
+            HashMap<String, i64>,
+            Option<AccountEquity>,
+            Value,
+            chrono::DateTime<Utc>,
+        ),
+        SeedError,
+    > {
         self.scheduler.acquire(2, false).await;
         let resp = self
             .client
             .info(json!({"type": "clearinghouseState", "user": address}))
             .await?;
         let now = Utc::now();
-        if let Ok(Some(equity)) = parse_account_equity(address, &resp, now) {
-            self.book
-                .lock()
-                .expect("book mutex poisoned")
-                .set_equity(equity);
-        }
+        let equity = parse_account_equity(address, &resp, now)?;
         let entries: &[Value] = match &resp {
             Value::Object(obj) => {
                 let Some(positions_val) = obj.get("assetPositions") else {
@@ -247,7 +342,7 @@ impl Enricher {
                 leverage.insert(pos.coin, value);
             }
         }
-        Ok((states, leverage))
+        Ok((states, leverage, equity, resp, now))
     }
 
     /// Detailed batch seeding returning explicit outcomes.

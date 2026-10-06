@@ -25,7 +25,7 @@ use futures_util::{SinkExt, StreamExt};
 use rust_decimal::Decimal;
 use serde_json::{Map, Value, json};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::sync::{Mutex as AsyncMutex, mpsc};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async_with_config};
@@ -99,6 +99,7 @@ pub struct Listener {
     dispatch_tx: mpsc::Sender<DispatchedEvent>,
     dispatch_rx: Arc<tokio::sync::Mutex<Option<mpsc::Receiver<DispatchedEvent>>>>,
     ledger: Option<Arc<ObservationLedger>>,
+    state_gate: Arc<AsyncMutex<()>>,
 }
 
 impl Listener {
@@ -134,11 +135,17 @@ impl Listener {
             dispatch_tx,
             dispatch_rx: Arc::new(tokio::sync::Mutex::new(Some(rx))),
             ledger: None,
+            state_gate: Arc::new(AsyncMutex::new(())),
         }
     }
 
     pub fn with_ledger(mut self, ledger: Arc<ObservationLedger>) -> Self {
         self.ledger = Some(ledger);
+        self
+    }
+
+    pub fn with_state_gate(mut self, state_gate: Arc<AsyncMutex<()>>) -> Self {
+        self.state_gate = state_gate;
         self
     }
 
@@ -400,10 +407,6 @@ impl Listener {
     // per the fixed decisions; resolve_deltas absorbs the per-trade shape checks).
     async fn handle_trades(&mut self, trades: &[Value]) {
         for trade in trades {
-            // PORT NOTE: GIL-free — lock scope: `self._registry.addresses` (@property) →
-            // lock, clone the cached Arc<HashSet> snapshot, guard drops at the end of the
-            // statement (never held across an await; fixed decision). resolve_deltas takes
-            // &HashSet, which the Arc derefs into.
             let watchlist = self
                 .registry
                 .lock()
@@ -413,46 +416,76 @@ impl Listener {
             if fills.is_empty() {
                 continue;
             }
-            // De-dupe on the trade id only for watched trades (keeps the ring window meaningful):
-            // a WS reconnect that redelivers this trade must not double-count or double-notify.
-            // PORT NOTE: `isinstance(tid, int)` gate → Value::as_i64 (tid is i64 — fixed
-            // decision, book.rs narrowing; JSON `true` was isinstance-int in Python but is
-            // rejected here — unobservable on real payloads, pnl.rs precedent).
-            let tid = trade.get("tid").and_then(Value::as_i64);
+
+            let Some(tid) = trade.get("tid").and_then(Value::as_i64) else {
+                tracing::warn!("watched trade missing tid; refusing ambiguous state mutation");
+                continue;
+            };
+            let Some(source_time_ms) = trade.get("time").and_then(Value::as_i64) else {
+                tracing::warn!(
+                    "watched trade missing source time; refusing ambiguous state mutation"
+                );
+                continue;
+            };
             let coin = trade.get("coin").and_then(Value::as_str).unwrap_or("");
-            if let Some(tid) = tid
-                && self.seen.check_and_add_scoped(coin, tid)
-            {
+            if coin.is_empty() {
+                tracing::warn!("watched trade missing coin; refusing ambiguous state mutation");
                 continue;
             }
+
             let mut receipt_id_opt = None;
             if let Some(ledger) = &self.ledger {
-                let source_key = format!("{coin}:{tid:?}");
-                if let Ok((r_id, is_dup)) = ledger
+                let source_key = format!("{source_time_ms}:{coin}:{tid}");
+                let (receipt_id, duplicate) = match ledger
                     .append_receipt("ws:trades", &source_key, trade, Utc::now())
                     .await
                 {
-                    if is_dup {
+                    Ok(value) => value,
+                    Err(err) => {
+                        tracing::error!("receipt append failed; state not advanced: {err}");
                         continue;
                     }
-                    receipt_id_opt = Some(r_id);
-                }
-            }
-            for fill in fills {
-                let (result, before_rev, after_rev, generation, coverage) = {
-                    let mut book = self.book.lock().expect("book mutex poisoned");
-                    let before_rev = book.state_revision(&fill.address);
-                    let result =
-                        book.ingest(&fill.address, &fill.coin, fill.delta, fill.px, fill.ts);
-                    let after_rev = book.state_revision(&fill.address);
-                    let generation = book.generation(&fill.address);
-                    let coverage = book.coverage_state(&fill.address);
-                    (result, before_rev, after_rev, generation, coverage)
                 };
+                if duplicate {
+                    match ledger.receipt_is_committed(receipt_id).await {
+                        Ok(true) => continue,
+                        Ok(false) => {
+                            tracing::warn!(
+                                "resuming pending receipt {receipt_id} after duplicate delivery"
+                            );
+                        }
+                        Err(err) => {
+                            tracing::error!(
+                                "receipt status lookup failed; state not advanced: {err}"
+                            );
+                            continue;
+                        }
+                    }
+                }
+                receipt_id_opt = Some(receipt_id);
+            } else if self.seen.check_and_add_scoped_at(coin, tid, source_time_ms) {
+                continue;
+            }
+
+            // Serialize the durable transition with snapshot/reconcile publication. The book
+            // is staged on a clone and published only after the entire economic trade commits.
+            let gate = self.state_gate.lock().await;
+            let mut staged_book = self.book.lock().expect("book mutex poisoned").clone();
+            let mut staged_results = Vec::with_capacity(fills.len());
+            let mut transitions = Vec::with_capacity(fills.len());
+
+            for fill in &fills {
+                let before_rev = staged_book.state_revision(&fill.address);
+                let result =
+                    staged_book.ingest(&fill.address, &fill.coin, fill.delta, fill.px, fill.ts);
+                let after_rev = staged_book.state_revision(&fill.address);
+                let generation = staged_book.generation(&fill.address);
+                let coverage = staged_book.coverage_state(&fill.address);
                 if result.events.is_empty() {
                     continue;
                 }
-                if let Some(ledger) = &self.ledger {
+
+                if let Some(receipt_id) = receipt_id_opt {
                     let cp = result.state.as_ref().map(|s| PositionCheckpoint {
                         address: s.address.clone(),
                         coin: s.coin.clone(),
@@ -478,31 +511,41 @@ impl Listener {
                         .map(|s| s.szi)
                         .unwrap_or(Decimal::ZERO);
                     let avg_entry = result.state.as_ref().map(|s| s.avg_entry);
-                    let _ = ledger
-                        .commit_transition(TransitionParams {
-                            receipt_id: receipt_id_opt.unwrap_or(0),
-                            wallet_id: fill.address.clone(),
-                            coin: fill.coin.clone(),
-                            checkpoint: cp,
-                            event_kind: "POSITION_CHANGE".to_string(),
-                            instrument_id: format!(
-                                "hyperliquid:mainnet:perp:default:{}",
-                                fill.coin
-                            ),
-                            event_time: fill.ts,
-                            received_at: Utc::now(),
-                            before_rev,
-                            after_rev,
-                            payload: json!({
-                                "transition": transition,
-                                "delta": fill.delta.to_string(),
-                                "quantity_after": quantity_after.to_string(),
-                                "avg_entry": avg_entry.map(|v| v.to_string()),
-                                "px": fill.px.to_string()
-                            }),
-                        })
-                        .await;
+                    transitions.push(TransitionParams {
+                        receipt_id,
+                        wallet_id: fill.address.clone(),
+                        coin: fill.coin.clone(),
+                        checkpoint: cp,
+                        event_kind: "POSITION_CHANGE".to_string(),
+                        instrument_id: format!("hyperliquid:mainnet:perp:default:{}", fill.coin),
+                        event_time: fill.ts,
+                        received_at: Utc::now(),
+                        before_rev,
+                        after_rev,
+                        payload: json!({
+                            "transition": transition,
+                            "delta": fill.delta.to_string(),
+                            "quantity_after": quantity_after.to_string(),
+                            "avg_entry": avg_entry.map(|v| v.to_string()),
+                            "px": fill.px.to_string()
+                        }),
+                    });
                 }
+                staged_results.push((fill.clone(), result));
+            }
+
+            if let Some(ledger) = &self.ledger
+                && let Err(err) = ledger.commit_transitions(transitions).await
+            {
+                tracing::error!("trade transition commit failed; state not published: {err}");
+                continue;
+            }
+
+            *self.book.lock().expect("book mutex poisoned") = staged_book;
+            self.seen.check_and_add_scoped_at(coin, tid, source_time_ms);
+            drop(gate);
+
+            for (fill, result) in staged_results {
                 let recipients = self
                     .registry
                     .lock()

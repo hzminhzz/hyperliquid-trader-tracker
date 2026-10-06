@@ -18,6 +18,7 @@ The system composes these contexts through one linked evidence model; they are N
 - `SYSTEM.md`: target system and module responsibilities.
 - `CONTRACTS.md`: normative information, identity, durability, and delivery rules.
 - `SIGNAL-V2.md`: compact V2 scoring/signal architecture synthesis and current claim boundary.
+- `EXECUTION-REVIEW.md`: dated code audit and proposed execution/sampling amendment, including state machines, source limits, adversarial cases and the minimum experiment. It is not implementation or predictive-promotion authorization. The root plan identifies the proposed next frontier; existing evidence manifests retain their historical meaning.
 - `RESEARCH.md`: normative signal semantics, feature definitions, research ladder, validation, and account-advice rules.
 - `OPERATIONS.md`: agent-facing interface and operational authority.
 - `QUALIFICATION.md`: executable acceptance scenarios and evidence requirements.

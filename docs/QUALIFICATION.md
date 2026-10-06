@@ -2,6 +2,16 @@
 
 **Status:** authoritative acceptance program for V2 signal research. Existing V1 evidence remains valid only for the claims it actually tested. In particular, software/replay tests for B2/B3/B4 do not by themselves establish predictive edge.
 
+## Proposed execution-review acceptance extension
+
+[EXECUTION-REVIEW section 9](EXECUTION-REVIEW.md#9-adversarial-acceptance-suite) adds the next-stage adversarial suite; section 10 defines the minimum experiment. Existing manifests remain historical evidence and are not silently reclassified.
+
+Before predictive research, demonstrate fail-closed live receipt/transition handling, exact dual-counterparty application, scoped snapshot/stream reconciliation, split-invariant additive flow, zero-net round trips with positive gross activity, disjoint flip legs, preserved partial exits, missing normalization, non-fresh backfill and coherent window expiry. A source must prove access to required order/program/taker fields before detector claims are permitted.
+
+Outcome qualification must reject excessive price lateness, missing availability and latency beyond the evaluation horizon. A flat market with positive costs must lose money for both long and short directions. Research qualification uses common market-time comparisons, dependence-aware uncertainty, prospective universe membership and untouched evaluation intervals for adaptive stage selection. The number of fills, OIDs or repeated wallet forecasts of the same market return cannot establish independent sample support.
+
+These are proposed additional acceptance predicates, not claims that the existing tests cover them. Their implementation follows explicit approval of the amended plan.
+
 ## Q0. Evidence standard
 
 Every test or experiment produces an evidence capsule with:

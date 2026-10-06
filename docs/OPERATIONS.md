@@ -2,6 +2,12 @@
 
 **Status:** interface authority. V1 inspection/control handlers are implemented in the separate expert-engine application; specific command availability must still be read from `inspect capabilities` and [STATUS](STATUS.md). V2 signal-specific inspection fields remain target design until implemented.
 
+## Proposed execution-evidence inspection extension
+
+The [execution review](EXECUTION-REVIEW.md#11-agent-operable-design) extends the existing facade rather than defining another agent framework. At one pinned wallet/instrument cut, expose raw state, net/gross path, denominator provenance, event/receipt/knowledge lag, coverage and uncertain program/segment annotations. Explain differences between evidence IDs by EXECUTION, MARK, EQUITY, NORMALIZER, CLUSTER, COVERAGE and WINDOW_EXPIRY; never replace this attribution with an unsupported intention narrative.
+
+Capabilities must distinguish implemented, qualified, proposed and blocked behavior. Compact read-only responses expand by evidence ID and reference exact receipts, revisions and experiment manifests. A validated lesson is a reproducible fixture plus one retained decision, not an accumulating transcript. These new inspection fields remain proposed until implemented; no displayed example is proof of command availability.
+
 ## O1. A small vocabulary over one implementation
 
 Expose five families: **inspect**, **explain**, **evaluate**, **plan**, and **apply**. CLI first, private API where needed, thin MCP later. All adapters invoke the same typed handlers, permission checks, and [result contract](CONTRACTS.md#c7-evidence-and-interfaces).
