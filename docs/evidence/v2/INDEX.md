@@ -8,7 +8,7 @@ This index separates engineering/descriptive evidence from historical predictive
 |---|---:|---|---|---|
 | V20 | #12 | [V20-baseline-manifest.md](V20-baseline-manifest.md) | ENGINEERING / DESCRIPTIVE BASELINE | PASS |
 | V21 | #13 | [V21-wallet-evidence-manifest.md](V21-wallet-evidence-manifest.md) | DESCRIPTIVE | PASS |
-| V22 | #14 | pending | DESCRIPTIVE | PENDING |
+| V22 | #14 | [V22-independence-manifest.md](V22-independence-manifest.md) | DESCRIPTIVE | PASS |
 | V23 | #15 | pending | DESCRIPTIVE | PENDING |
 | V24 | #16 | pending | DESCRIPTIVE | PENDING |
 | V25 | #17 | pending | ENGINEERING | PENDING |
