@@ -373,3 +373,264 @@ When implementation is explicitly authorized:
 # V1 history
 
 The prior Agent-operable expert ensemble V1 milestone remains historical evidence of the observation, persistence, projection, baseline consensus, clone-resistance, advisory and operations infrastructure. It is not deleted or reinterpreted as proof of predictive edge. V2 begins from that qualified engineering substrate.
+
+### Milestone: Forward-qualified expert signal engine V2
+
+**Issue 1 — V20: Freeze the V1 baseline and evidence semantics**
+
+**Depends on:** none
+
+**Goal:** establish the immutable B0/V1 reference and stop engineering evidence from being mistaken for predictive evidence.
+
+**Deliverable**
+- capture tracker/engine revisions, deployed runtime path, feature paths, universe semantics, and current candidate constants;
+- register B0 as the exact V1 live equal-budget bounded consensus;
+- classify existing Q10/Q11/Q15 evidence by qualification class;
+- label historical universe studies as conditional fixed-universe or point-in-time selection.
+
+**Acceptance**
+- Q01 passes;
+- current tracker and expert-engine tests remain green;
+- no service/config/source changes;
+- B0 can be reproduced exactly from a pinned manifest.
+
+---
+
+**Issue 2 — V21: Deepen WalletEvidence**
+
+**Depends on:** Issue 1 / V20
+
+**Goal:** preserve the descriptive information currently lost or blurred by posture-only scoring.
+
+**Deliverable**
+- canonical WalletEvidence artifact;
+- raw unclipped bias plus named bounded-influence transform;
+- observable portfolio share;
+- OPEN/ADD/REDUCE/CLOSE/FLIP intent semantics;
+- multi-horizon intent flow;
+- position age, intent age, observation age;
+- explicit economic-change vs valuation/equity/reconciliation causes.
+
+**Acceptance**
+- Q04-Q07 pass;
+- +2x -> +1x is REDUCE with positive state and negative flow;
+- unchanged state cannot repeatedly create flow;
+- tiny add on a large old position remains a small flow event;
+- reconciliation and mark/equity-only changes cannot fabricate intent.
+
+---
+
+**Issue 3 — V22: Build the independence artifact V2**
+
+**Depends on:** Issue 2 / V21
+
+**Goal:** make redundancy and independent breadth explicit and point-in-time correct.
+
+**Deliverable**
+- versioned intent/state similarity schema;
+- active-step and episode support diagnostics;
+- deterministic complete-link baseline;
+- effective breadth;
+- UNKNOWN-similarity/newcomer policy;
+- point-in-time cluster training cutoff and update schedule.
+
+**Acceptance**
+- Q08 passes;
+- clone, chain-link, low-support, and drift fixtures pass;
+- 15 clones cannot gain 15 independent votes;
+- as-known replay cannot use future cluster knowledge.
+
+---
+
+**Issue 4 — V23: Add trader-relative conviction**
+
+**Depends on:** Issue 2 / V21
+
+**Goal:** distinguish routine exposure from exposure that is unusual for the same trader.
+
+**Deliverable**
+- lagged expert/instrument bias-distribution artifact;
+- robust percentile/rank feature;
+- minimum-support and UNKNOWN semantics;
+- drift diagnostics;
+- strict no-current/no-future leakage.
+
+**Acceptance**
+- Q09 passes;
+- low-support experts remain UNKNOWN rather than neutral;
+- historical replay reproduces only distributions knowable at the decision cut.
+
+---
+
+**Issue 5 — V24: Create canonical EnsembleEvidence**
+
+**Depends on:** Issues 3-4 / V22-V23
+
+**Goal:** expose one deep, inspectable ensemble interface without prematurely collapsing evidence into a magic score.
+
+**Deliverable**
+- state evidence;
+- flow evidence by horizon;
+- relative-conviction summaries;
+- independent breadth;
+- supporting/opposing cluster contributions;
+- missing/reliability diagnostics;
+- B0/B1/B2 comparators;
+- exact evidence lineage and revision handles;
+- extension slots for later skill/context features.
+
+**Acceptance**
+- Q11 and agent-explanation fixtures pass;
+- callers can explain the ensemble without reconstructing lower-level modules;
+- state, flow, confidence/support, and crowding remain separable.
+
+---
+
+**Issue 6 — V25: Build the forward outcome ledger**
+
+**Depends on:** Issue 5 / V24
+
+**Goal:** make all future research reuse one immutable outcome substrate.
+
+**Deliverable**
+- OutcomeRecord keyed to evidence/signal IDs;
+- 1m, 5m, 15m, 1h, 4h, 24h forward returns;
+- declared-latency and cost-adjusted returns;
+- MFE/MAE;
+- context/coverage at emission;
+- late-correction/restatement flag;
+- incremental resumable computation over sealed manifests.
+
+**Acceptance**
+- Q12 passes;
+- attaching outcomes never mutates historical features, timestamps, or decisions;
+- identical sealed manifests produce identical outcome joins.
+
+---
+
+**Issue 7 — V26: Run the frozen B0-B4 ablation program**
+
+**Depends on:** Issue 6 / V25
+
+**Goal:** test whether the simpler descriptive representations contain real predictive information before adding more complexity.
+
+**Deliverable**
+- registered paired evaluations for B0 V1 bounded consensus, B1 raw state, B2 independent state, B3 independent flow, and B4 relative conviction;
+- clipped-only vs raw-preserved;
+- state vs flow vs state+flow;
+- equal-wallet vs cluster-aware;
+- absolute vs relative conviction;
+- latency/cost sensitivity;
+- expert-dropout sensitivity.
+
+**Acceptance**
+- Q13-Q16 pass;
+- every rung ends PROMOTE, REJECT, or INCONCLUSIVE with retained evidence;
+- final holdout is never retuned;
+- negative results and search counts are retained.
+
+---
+
+**Issue 8 — V27: Test skill and cohort divergence**
+
+**Depends on:** Issue 7 / V26, and starts only if prior evidence justifies added complexity
+
+**Goal:** test whether lagged skill cohorts add information beyond B4.
+
+**Deliverable**
+- point-in-time alpha/control/anti-alpha cohort artifact;
+- lagged horizon-specific skill metrics with shrinkage;
+- drift/decay policy;
+- skill-divergence feature;
+- cluster-budget-preserving optional quality weighting.
+
+**Acceptance**
+- Q10 and Q17 pass;
+- equal-weight ablation is retained;
+- only robust incremental holdout value permits predictive use;
+- otherwise cohort data remains descriptive/research-only.
+
+---
+
+**Issue 9 — V28: Test market divergence and crowding context**
+
+**Depends on:** Issue 7 / V26, and starts only when point-in-time context data are available
+
+**Goal:** determine whether market context improves prediction or should remain only a risk control.
+
+**Deliverable**
+- one registered experiment per context family: funding, OI, volatility/price response, and supported liquidation/crowding inputs;
+- separate directional-predictor and risk-gate variants;
+- provenance/freshness semantics for every context feature.
+
+**Acceptance**
+- Q18 passes;
+- missing/stale context fails visibly;
+- only feature families with incremental holdout value enter PredictiveEvidence.
+
+---
+
+**Issue 10 — V29: Build the deterministic TradeSignal state machine**
+
+**Depends on:** Issue 7 / V26 plus any promoted Issue 8-9 features
+
+**Goal:** convert promoted predictive evidence into an account-independent, deterministic signal without hiding its causes.
+
+**Deliverable**
+- TradeSignal artifact;
+- FLAT/LONG/SHORT state;
+- ENTER/INCREASE/REDUCE/EXIT/REVERSE/NONE event;
+- signal strength;
+- structured confidence/support;
+- separate crowding risk;
+- expected_return NULL unless calibrated;
+- invalidation conditions;
+- simpler baseline comparators;
+- versioned thresholds and hysteresis.
+
+**Acceptance**
+- Q19-Q20 and Q24-Q25 pass;
+- persistence alone emits NONE;
+- REDUCE can retain direction;
+- REVERSE requires the declared opposite-side transition;
+- historical holdout remains useful after realistic latency/costs, or the policy is explicitly rejected.
+
+---
+
+**Issue 11 — V30: Freeze and run live-forward qualification**
+
+**Depends on:** Issue 10 / V29 historical promotion
+
+**Goal:** verify the frozen candidate on genuinely new shadow data without forward-period retuning.
+
+**Deliverable**
+- frozen code/feature/model/policy revisions before the forward clock;
+- automatic outcome attachment;
+- outage, missing-expert, and drift evidence retained;
+- version splits for any correctness fixes.
+
+**Acceptance**
+- Q21-Q23 pass;
+- no threshold/model retuning is attributed to the same forward candidate;
+- FORWARD-QUALIFIED is granted only by the registered live-forward rule.
+
+---
+
+**Issue 12 — V31: Promote the qualified signal to production advisory**
+
+**Depends on:** Issue 11 / V30
+
+**Goal:** make the forward-qualified signal the explicit advisory policy with safe rollback and complete explanations.
+
+**Deliverable**
+- policy approval artifact;
+- runtime selection of one explicit promoted signal revision;
+- current signal plus B0/B1/B2 comparators in inspection/explanations;
+- rollback to the prior qualified policy;
+- verified degraded/missing-data behavior;
+- Telegram/inspection surfaces show signal state, event, evidence, and blockers.
+
+**Acceptance**
+- Q24-Q26 and existing authority/replay/load gates pass;
+- production advisory claim is allowed only after forward qualification and approval;
+- financial execution remains forbidden.
