@@ -12,7 +12,9 @@ ER2 (#26) is **ENGINEERING_PASS / NATIVE-LIVE-SOURCE-BLOCKED** in companion engi
 
 ER3 (#27) is **ENGINEERING_PASS / LIVE-COVERAGE-MEASUREMENT-BLOCKED** in companion engine revision `1da1321`: coherent minute cuts carry all revisions/watermarks, material interrupts coalesce to the latest contribution, normalized wallet flow is bounded before fixed cluster budgets, and missing mass is not silently reallocated. The engine passes Ruff, `ty`, and **101 tests**. See [ER3 evidence](evidence/execution-review/ER3-coherent-cuts.md).
 
-The next implementation frontier is ER4. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
+ER4 (#28) is **PROTOCOL_ENGINEERING_PASS / EMPIRICAL_EVALUATION_BLOCKED** in companion engine revision `f3ae0be`: R0/R1/R2 are frozen, direction-before-cost outcome semantics and price-lateness censoring are qualified, and absent/immature prospective data returns BLOCKED rather than promotion. The engine full suite passes **106 tests**. See [ER4 evidence](evidence/execution-review/ER4-representation-experiment.md).
+
+The next implementation frontier is ER5. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
 
 ## Latest inspection: execution and sampling review, 2026-10-06
 
