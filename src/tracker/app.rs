@@ -107,9 +107,7 @@ async fn seed_and_admit(
         let sem = Arc::clone(&sem);
         async move {
             let _permit = sem.acquire().await.expect("semaphore closed");
-            if enricher.seed_wallet(&address).await {
-                // PORT NOTE: GIL-free — lock scope: the registry lock is taken only after
-                // the seed await resolved and is dropped at end of block (no await inside).
+            if enricher.seed_wallet(&address).await.is_applied() {
                 let mut registry = registry.lock().expect("registry mutex poisoned");
                 for member in &members {
                     registry.subscribe(member.chat_id, &address, &member.label);
@@ -180,7 +178,13 @@ async fn reconcile_loop(
             let end = (start + settings.reconcile_batch).min(tracked.len());
             let batch = tracked[start..end].to_vec();
             cursor = start + settings.reconcile_batch;
-            enricher.seed_many(batch).await;
+            let summary = enricher.seed_many_detailed(batch).await;
+            tracing::info!(
+                "reconcile batch: {} applied, {} skipped race, {} failed",
+                summary.applied.len(),
+                summary.skipped_race.len(),
+                summary.failed.len()
+            );
         }
     }
 }

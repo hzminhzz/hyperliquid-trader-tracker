@@ -17,14 +17,13 @@ use chrono::Utc;
 use serde_json::{Value, json};
 use tokio::sync::Semaphore;
 
-use crate::book::InMemoryBook;
+use crate::book::{InMemoryBook, ReconcileOutcome};
 use crate::config::Settings;
-// PORT NOTE: import added relative to the Python (enrich.py named no exception types — its
-// bare `except Exception` matched them anonymously); the SeedError reshape below needs the name.
 use crate::exceptions::TrackerError;
 use crate::hl_client::InfoClient;
-use crate::models::{self, AccountPosition, build_position};
+use crate::models::{self, AccountPosition, CoverageState, build_position, parse_account_equity};
 use crate::resolve::seed_state_from_row;
+use crate::scheduler::RequestScheduler;
 use crate::state::PositionState;
 
 /// The closed union of everything a `clearinghouseState` snapshot can fail with.
@@ -56,6 +55,15 @@ pub struct Enricher {
     settings: Settings,
     book: Arc<Mutex<InMemoryBook>>,
     client: Arc<dyn InfoClient>,
+    scheduler: RequestScheduler,
+}
+
+/// Summary of outcomes from batch seeding/reconciling.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReconcileSummary {
+    pub applied: Vec<String>,
+    pub skipped_race: Vec<String>,
+    pub failed: Vec<String>,
 }
 
 impl Enricher {
@@ -68,7 +76,26 @@ impl Enricher {
             settings,
             book,
             client,
+            scheduler: RequestScheduler::default(),
         }
+    }
+
+    pub fn with_scheduler(
+        settings: Settings,
+        book: Arc<Mutex<InMemoryBook>>,
+        client: Arc<dyn InfoClient>,
+        scheduler: RequestScheduler,
+    ) -> Self {
+        Self {
+            settings,
+            book,
+            client,
+            scheduler,
+        }
+    }
+
+    pub fn scheduler(&self) -> &RequestScheduler {
+        &self.scheduler
     }
 
     /// Snapshot `address`'s positions and reseed the book. Returns `false` on failure.
@@ -77,39 +104,25 @@ impl Enricher {
     /// the filter) rather than risk mis-labelling a later add as a new open. Any failure — a
     /// transport/HTTP error OR a malformed snapshot that won't parse — returns `false` rather
     /// than propagating, so one bad wallet can never abort a whole seed sweep.
-    pub async fn seed_wallet(&self, address: &str) -> bool {
-        // Capture the fill epoch BEFORE the await so a live fill that lands during the snapshot
-        // window makes the reconcile reseed skip (rather than clobber the fresher live state).
-        // PORT NOTE: GIL-free — lock scope: the guard lives only for this statement and is
-        // dropped before the await below. A poisoned mutex means another task panicked
-        // mid-mutation — a programmer error, so it panics via expect (fixed decision:
-        // RuntimeError-class failures panic).
+    pub async fn seed_wallet(&self, address: &str) -> ReconcileOutcome {
         let epoch = self
             .book
             .lock()
             .expect("book mutex poisoned")
             .fill_epoch(address);
-        // PORT NOTE: reshaped per the fixed decisions — the whole snapshot+parse `try:` body is
-        // the private snapshot_positions() below; `except Exception: log + return False`
-        // becomes this match on its Result.
         match self.snapshot_positions(address).await {
-            Ok((states, leverage)) => {
-                // PORT NOTE: GIL-free — lock scope (re-acquired after the await, never across).
-                // Keyword `expected_epoch=epoch` → Some(epoch): this path always has a captured
-                // epoch — None is the seed-before-admit case where no snapshot race exists.
-                // The applied/skipped bool is discarded exactly as in Python: a skipped reseed
-                // means fresher live state won, which still counts as a successful seed.
+            Ok((states, leverage)) => self
+                .book
+                .lock()
+                .expect("book mutex poisoned")
+                .reseed_wallet(address, states, leverage, Some(epoch)),
+            Err(err) => {
+                tracing::error!("seed: clearinghouseState failed for {address}: {err:?}");
                 self.book
                     .lock()
                     .expect("book mutex poisoned")
-                    .reseed_wallet(address, states, leverage, Some(epoch));
-                true
-            }
-            Err(err) => {
-                // PORT NOTE: logger.exception(...) → tracing::error! carrying the error's Debug
-                // form (fixed decision — the Python traceback has no Rust analogue).
-                tracing::error!("seed: clearinghouseState failed for {address}: {err:?}");
-                false
+                    .set_coverage_state(address, CoverageState::Quarantined);
+                ReconcileOutcome::Failed
             }
         }
     }
@@ -123,25 +136,27 @@ impl Enricher {
         &self,
         address: &str,
     ) -> Result<Vec<AccountPosition>, SeedError> {
+        self.scheduler.acquire(2, false).await;
         let resp = self
             .client
             .info(json!({"type": "clearinghouseState", "user": address}))
             .await?;
-        // `(resp or {}).get("assetPositions") or []` — Python's `or {}` only rescued FALSY
-        // responses (null/false/0/""/[]/{} → a deliberate empty seed); a TRUTHY non-dict hit
-        // AttributeError, which seed_wallet's `except Exception` turned into a FAILED seed so
-        // the wallet stayed quarantined. Mirroring both matters: treating a truthy garbage
-        // body as "no positions" would wipe the wallet's live book state on reconcile.
-        // PORT NOTE: a *truthy non-list* assetPositions survived Python's `or []` and got
-        // iterated anyway (str → chars, dict → keys), each junk item then skipped inside
-        // build_position; here it short-circuits to no entries — same net result, minus the
-        // accidental iteration.
         let entries: &[Value] = match &resp {
-            Value::Object(obj) => obj
-                .get("assetPositions")
-                .and_then(Value::as_array)
-                .map_or(&[], Vec::as_slice),
-            other if value_is_falsy(other) => &[],
+            Value::Object(obj) => {
+                let Some(positions_val) = obj.get("assetPositions") else {
+                    return Err(TrackerError::Parse(
+                        "clearinghouseState: missing required assetPositions field".to_string(),
+                    )
+                    .into());
+                };
+                let Some(arr) = positions_val.as_array() else {
+                    return Err(TrackerError::Parse(
+                        "clearinghouseState: assetPositions must be an array".to_string(),
+                    )
+                    .into());
+                };
+                arr.as_slice()
+            }
             other => {
                 return Err(TrackerError::Parse(format!(
                     "clearinghouseState: expected an object, got {}",
@@ -176,93 +191,102 @@ impl Enricher {
         &self,
         address: &str,
     ) -> Result<(Vec<PositionState>, HashMap<String, i64>), SeedError> {
-        let positions = self.account_positions(address).await?;
+        self.scheduler.acquire(2, false).await;
+        let resp = self
+            .client
+            .info(json!({"type": "clearinghouseState", "user": address}))
+            .await?;
         let now = Utc::now();
+        if let Ok(Some(equity)) = parse_account_equity(address, &resp, now) {
+            self.book
+                .lock()
+                .expect("book mutex poisoned")
+                .set_equity(equity);
+        }
+        let entries: &[Value] = match &resp {
+            Value::Object(obj) => {
+                let Some(positions_val) = obj.get("assetPositions") else {
+                    return Err(TrackerError::Parse(
+                        "clearinghouseState: missing required assetPositions field".to_string(),
+                    )
+                    .into());
+                };
+                let Some(arr) = positions_val.as_array() else {
+                    return Err(TrackerError::Parse(
+                        "clearinghouseState: assetPositions must be an array".to_string(),
+                    )
+                    .into());
+                };
+                arr.as_slice()
+            }
+            other => {
+                return Err(TrackerError::Parse(format!(
+                    "clearinghouseState: expected an object, got {}",
+                    json_type_name(other)
+                ))
+                .into());
+            }
+        };
         let mut states: Vec<PositionState> = Vec::new();
         let mut leverage: HashMap<String, i64> = HashMap::new();
-        for pos in positions {
-            // account_positions only returns non-zero sizes; stay defensive anyway. The
-            // unwrapped non-zero Decimal is exactly what seed_state_from_row's `szi` takes.
-            let Some(szi) = pos.szi.filter(|s| !s.is_zero()) else {
+        for entry in entries {
+            let Some(pos) = build_position(address, entry)? else {
                 continue;
             };
-            // PORT NOTE: keyword-only `fallback_ts=now` flattened to positional (resolve.rs);
-            // `entry_px: Decimal | None` is models.rs's Money, passed through unchanged.
+            if pos.szi.filter(|s| !s.is_zero()).is_none() {
+                continue;
+            }
             states.push(seed_state_from_row(
                 address,
                 &pos.coin,
-                szi,
+                pos.szi.expect("guarded non-zero above"),
                 pos.entry_px,
                 now,
             ));
             if let Some(value) = pos.leverage_value {
-                // PORT NOTE: pos.coin moves into the map here — its last use (Python shared
-                // the one str between the seeded state and the leverage key).
                 leverage.insert(pos.coin, value);
             }
         }
         Ok((states, leverage))
     }
 
-    /// Seed every address with bounded concurrency. Returns `(seeded, failed)`.
-    // PORT NOTE: `addresses: list[str]` → owned Vec<String>: every address is moved through
-    // its per-address future into one of the returned partitions.
-    pub async fn seed_many(&self, addresses: Vec<String>) -> (Vec<String>, Vec<String>) {
-        // PORT NOTE: asyncio.Semaphore → tokio::sync::Semaphore (fixed decision). No Arc
-        // needed: the per-address futures only borrow it, and join_all resolves before drop.
+    /// Detailed batch seeding returning explicit outcomes.
+    pub async fn seed_many_detailed(&self, addresses: Vec<String>) -> ReconcileSummary {
         let sem = Semaphore::new(self.settings.seed_concurrency);
-
-        // PORT NOTE: nested `async def _one(addr)` → per-address async blocks;
-        // `asyncio.gather(*(_one(a) for a in addresses))` → futures_util::future::join_all
-        // (order-preserving, fixed decision). `async with sem:` → acquire().await with the
-        // permit guard dropping at block end — the slot is released exactly where __aexit__
-        // ran. acquire() only errs if the semaphore is closed, which never happens here →
-        // can't-happen expect.
-        let results: Vec<(String, bool)> =
+        let results: Vec<(String, ReconcileOutcome)> =
             futures_util::future::join_all(addresses.into_iter().map(|addr| {
                 let sem = &sem;
                 async move {
                     let _permit = sem.acquire().await.expect("semaphore is never closed");
-                    let ok = self.seed_wallet(&addr).await;
-                    (addr, ok)
+                    let outcome = self.seed_wallet(&addr).await;
+                    (addr, outcome)
                 }
             }))
             .await;
-        // PERF(port): the two list comprehensions stay two passes with clones (both partitions
-        // borrow the same results); a single into_iter().partition() would avoid the clones —
-        // profile in Phase B (n = watchlist size, negligible).
-        let seeded: Vec<String> = results
-            .iter()
-            .filter(|(_, ok)| *ok)
-            .map(|(a, _)| a.clone())
-            .collect();
-        let failed: Vec<String> = results
-            .iter()
-            .filter(|(_, ok)| !*ok)
-            .map(|(a, _)| a.clone())
-            .collect();
-        if !failed.is_empty() {
+
+        let mut summary = ReconcileSummary::default();
+        for (addr, outcome) in results {
+            match outcome {
+                ReconcileOutcome::Applied => summary.applied.push(addr),
+                ReconcileOutcome::SkippedRace => summary.skipped_race.push(addr),
+                ReconcileOutcome::Failed => summary.failed.push(addr),
+            }
+        }
+        if !summary.failed.is_empty() {
             tracing::warn!(
-                "seed sweep: {} seeded, {} failed",
-                seeded.len(),
-                failed.len()
+                "seed sweep: {} applied, {} skipped race, {} failed",
+                summary.applied.len(),
+                summary.skipped_race.len(),
+                summary.failed.len()
             );
         }
-        (seeded, failed)
+        summary
     }
-}
 
-// PORT NOTE: structural additions for the `(resp or {})` translation in snapshot_positions.
-
-/// Python truthiness over a JSON value: null, false, 0, "", [], and {} are falsy.
-fn value_is_falsy(v: &Value) -> bool {
-    match v {
-        Value::Null => true,
-        Value::Bool(b) => !b,
-        Value::Number(n) => n.as_f64() == Some(0.0),
-        Value::String(s) => s.is_empty(),
-        Value::Array(a) => a.is_empty(),
-        Value::Object(o) => o.is_empty(),
+    /// Seed every address with bounded concurrency. Returns `(seeded, failed)`.
+    pub async fn seed_many(&self, addresses: Vec<String>) -> (Vec<String>, Vec<String>) {
+        let summary = self.seed_many_detailed(addresses).await;
+        (summary.applied, summary.failed)
     }
 }
 
@@ -373,7 +397,12 @@ mod tests {
             fail: HashSet::new(),
         };
         // `assert await ... is True` → the returned bool itself.
-        assert!(enricher(client, Arc::clone(&book)).seed_wallet("0xa").await);
+        assert!(
+            enricher(client, Arc::clone(&book))
+                .seed_wallet("0xa")
+                .await
+                .is_applied()
+        );
         // PORT NOTE: reads go through the lock guard (Python read the shared object directly).
         let book = book.lock().expect("book mutex poisoned");
         let pos = book.position("0xa", "BTC");
@@ -431,7 +460,12 @@ mod tests {
             fail: HashSet::from(["0xa".to_string()]),
         };
         // `assert await ... is False` → negated bool.
-        assert!(!enricher(client, Arc::clone(&book)).seed_wallet("0xa").await);
+        assert!(
+            !enricher(client, Arc::clone(&book))
+                .seed_wallet("0xa")
+                .await
+                .is_applied()
+        );
         assert!(
             book.lock()
                 .expect("book mutex poisoned")

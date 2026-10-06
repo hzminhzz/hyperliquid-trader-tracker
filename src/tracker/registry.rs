@@ -64,6 +64,7 @@ pub struct Registry {
     // surface, and Arc preserves Python's semantics where a caller holding the old
     // frozenset keeps a stable snapshot while the registry swaps in a rebuilt one.
     addresses: Arc<HashSet<String>>,
+    desired: HashSet<String>,
 }
 
 impl Registry {
@@ -71,12 +72,19 @@ impl Registry {
         Self {
             subs: HashMap::new(),
             addresses: Arc::new(HashSet::new()),
+            desired: HashSet::new(),
         }
+    }
+
+    fn rebuild_addresses(&mut self) {
+        let mut all: HashSet<String> = self.subs.keys().cloned().collect();
+        all.extend(self.desired.iter().cloned());
+        self.addresses = Arc::new(all);
     }
 
     /// Whether any subscriber currently tracks `address` (i.e. it is already seeded/admitted).
     pub fn is_tracked(&self, address: &str) -> bool {
-        self.subs.contains_key(address)
+        self.subs.contains_key(address) || self.desired.contains(address)
     }
 
     /// Record `chat_id` as a subscriber of `address` (admitting it to the filter if new).
@@ -92,7 +100,7 @@ impl Registry {
                 // cached set from `keys()`.
                 // PERF(port): rebuild clones every tracked address on each first-subscribe
                 // (Python's frozenset shares the interned str objects) — profile in Phase B.
-                self.addresses = Arc::new(self.subs.keys().cloned().collect());
+                self.rebuild_addresses();
             }
             Some(subscribers) => {
                 subscribers.insert(chat_id, label.to_string());
@@ -121,8 +129,9 @@ impl Registry {
         // PORT NOTE: &mut borrow of the inner map is dead by here, so re-borrowing
         // self.subs for the removal is fine under NLL — no reshape needed.
         self.subs.remove(address);
-        self.addresses = Arc::new(self.subs.keys().cloned().collect());
-        (true, true)
+        self.rebuild_addresses();
+        let is_now_orphan = !self.desired.contains(address);
+        (true, is_now_orphan)
     }
 
     /// Relabel one subscriber's view of `address`. Returns `true` if subscribed.
@@ -137,6 +146,30 @@ impl Registry {
         true
     }
 
+    /// Register a wallet into the desired observation universe independent of subscribers.
+    pub fn add_desired(&mut self, address: &str) {
+        self.desired.insert(address.to_string());
+        self.rebuild_addresses();
+    }
+
+    /// Remove a wallet from the desired observation universe.
+    pub fn remove_desired(&mut self, address: &str) -> bool {
+        let removed = self.desired.remove(address);
+        if removed {
+            self.rebuild_addresses();
+        }
+        removed
+    }
+
+    /// Check whether a wallet is registered in the desired universe.
+    pub fn is_desired(&self, address: &str) -> bool {
+        self.desired.contains(address)
+    }
+
+    /// Return a clone of all addresses in the desired universe.
+    pub fn desired_addresses(&self) -> HashSet<String> {
+        self.desired.clone()
+    }
     /// A snapshot `{chat_id: label}` of who tracks `address` (empty if none).
     // PORT NOTE: `dict(self._subs.get(address, {}))` is a shallow copy → clone the inner map.
     // PERF(port): clones every label String (Python's dict() copy shares the str objects) —

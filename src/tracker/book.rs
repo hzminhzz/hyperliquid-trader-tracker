@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 
+use crate::models::{AccountEquity, CoverageState, MarkObservation};
 use crate::state::{ApplyResult, PositionState, apply_fill};
 
 // PORT NOTE: `_Key = tuple[str, str]` → private type alias; underscore dropped (privacy is
@@ -24,25 +25,69 @@ use crate::state::{ApplyResult, PositionState, apply_fill};
 /// (address, coin), both lowercase / as-fed
 type Key = (String, String);
 
-/// A bounded FIFO set of recently-seen trade `tid` values (reconnect idempotency).
+/// A composite economic identity for a trade on the Hyperliquid feed.
+///
+/// Scoped by coin and tid to prevent cross-instrument collisions.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TradeKey {
+    pub coin: String,
+    pub tid: i64,
+}
+
+impl TradeKey {
+    pub fn new(coin: impl Into<String>, tid: i64) -> Self {
+        Self {
+            coin: coin.into(),
+            tid,
+        }
+    }
+}
+
+/// Explicit outcome of a wallet reconciliation/reseed attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReconcileOutcome {
+    /// Snapshot successfully applied to book.
+    Applied,
+    /// A live fill landed during the snapshot fetch window; snapshot skipped to preserve fresher live state.
+    SkippedRace,
+    /// Snapshot failed to fetch or parse.
+    Failed,
+}
+
+impl ReconcileOutcome {
+    pub fn is_applied(&self) -> bool {
+        matches!(self, ReconcileOutcome::Applied)
+    }
+}
+
+impl PartialEq<bool> for ReconcileOutcome {
+    fn eq(&self, other: &bool) -> bool {
+        self.is_applied() == *other
+    }
+}
+
+impl PartialEq<ReconcileOutcome> for bool {
+    fn eq(&self, other: &ReconcileOutcome) -> bool {
+        *self == other.is_applied()
+    }
+}
+
+impl std::ops::Not for ReconcileOutcome {
+    type Output = bool;
+    fn not(self) -> Self::Output {
+        !self.is_applied()
+    }
+}
+/// A bounded FIFO set of recently-seen trade `(coin, tid)` values (reconnect idempotency).
 ///
 /// A WS reconnect can redeliver trades; re-ingesting the same trade would both corrupt the
-/// position (double-counted delta) and double-notify. [`SeenTids::check_and_add`] records a
-/// `tid` and reports whether it had already been seen, evicting the oldest once `maxlen` is hit.
-// PORT NOTE: tid `int` → i64 — tids arrive as JSON integers and the other drafts narrow JSON
-// ints via `Value::as_i64` (models.rs, registry.rs chat_id); Hyperliquid tids (~50-bit hashes)
-// fit comfortably. The listener's `isinstance(tid, int)` gate becomes `Value::as_i64` there.
-// PORT NOTE: maxlen `int` → usize (compared against a collection length, so bounded by
-// API contract per the guide).
+/// position (double-counted delta) and double-notify. Records scoped trade identities and reports
+/// whether it had already been seen, evicting the oldest once `maxlen` is hit.
 #[derive(Debug)]
 pub struct SeenTids {
-    // PORT NOTE: dropped Python's `_` privacy prefix — Rust fields are private by default.
     maxlen: usize,
-    // PORT NOTE: `collections.deque` → VecDeque per the guide (unbounded deque; eviction is
-    // manual, exactly as the Python did it — deque(maxlen=..) was deliberately NOT used there
-    // because the set must be pruned in lockstep).
-    order: VecDeque<i64>,
-    set: HashSet<i64>,
+    order: VecDeque<TradeKey>,
+    set: HashSet<TradeKey>,
 }
 
 impl SeenTids {
@@ -54,18 +99,15 @@ impl SeenTids {
         }
     }
 
-    /// Return `true` if `tid` was already seen; otherwise record it and return `false`.
-    pub fn check_and_add(&mut self, tid: i64) -> bool {
-        if self.set.contains(&tid) {
+    /// Check and record scoped trade by (coin, tid).
+    pub fn check_and_add_scoped(&mut self, coin: &str, tid: i64) -> bool {
+        let key = TradeKey::new(coin, tid);
+        if self.set.contains(&key) {
             return true;
         }
-        self.set.insert(tid);
-        self.order.push_back(tid);
+        self.set.insert(key.clone());
+        self.order.push_back(key);
         if self.order.len() > self.maxlen {
-            // PORT NOTE: `self._set.discard(self._order.popleft())` — popleft() would raise
-            // IndexError on empty, but this branch guarantees non-empty (len > maxlen >= 0),
-            // so a can't-happen expect() per the fixed decisions; `discard` never errors, so
-            // `remove`'s bool is ignored.
             let oldest = self
                 .order
                 .pop_front()
@@ -74,8 +116,12 @@ impl SeenTids {
         }
         false
     }
-}
 
+    /// Check and record trade with default empty coin scope (backward compatibility).
+    pub fn check_and_add(&mut self, tid: i64) -> bool {
+        self.check_and_add_scoped("", tid)
+    }
+}
 /// Per-`(address, coin)` position state + a per-`(address, coin)` leverage cache.
 // PORT NOTE: derived Default mirrors the argless __init__ (all fields start empty),
 // matching registry.rs. Plain HashMaps (not IndexMap): no code path iterates these where
@@ -95,6 +141,10 @@ pub struct InMemoryBook {
     // PORT NOTE: epoch `int` → u64 — a monotone non-negative counter, only bumped by 1 and
     // compared for equality.
     epoch: HashMap<String, u64>,
+    generation: HashMap<String, u64>,
+    equities: HashMap<String, AccountEquity>,
+    marks: HashMap<String, MarkObservation>,
+    coverage: HashMap<String, CoverageState>,
 }
 
 impl InMemoryBook {
@@ -172,36 +222,88 @@ impl InMemoryBook {
         states: impl IntoIterator<Item = PositionState>,
         leverage: HashMap<String, i64>,
         expected_epoch: Option<u64>,
-    ) -> bool {
-        // PORT NOTE: `if expected_epoch is not None and self._epoch.get(address, 0) !=
-        // expected_epoch:` → if-let over the Option (short-circuit shape preserved).
+    ) -> ReconcileOutcome {
         if let Some(expected) = expected_epoch
             && self.epoch.get(address).copied().unwrap_or(0) != expected
         {
-            return false;
+            return ReconcileOutcome::SkippedRace;
         }
-        self.drop_wallet(address);
+        self.clear_positions_and_leverage(address);
+        let mut count = 0;
         for state in states {
-            // PORT NOTE: the coin key is cloned out of the state before the state moves into
-            // the map (Python shared the str between key and object).
             self.positions
                 .insert((address.to_string(), state.coin.clone()), state);
+            count += 1;
         }
         for (coin, value) in leverage {
             self.leverage.insert((address.to_string(), coin), value);
         }
-        true
+        let cov = if count > 0 {
+            CoverageState::Seeded
+        } else {
+            CoverageState::KnownFlat
+        };
+        self.coverage.insert(address.to_string(), cov);
+        // Monotonic epoch: increment on reseed, never reset!
+        *self.epoch.entry(address.to_string()).or_insert(0) += 1;
+        ReconcileOutcome::Applied
+    }
+
+    /// Clear positions and leverage for `address` without clearing its revision or generation.
+    fn clear_positions_and_leverage(&mut self, address: &str) {
+        self.positions.retain(|key, _| key.0 != address);
+        self.leverage.retain(|key, _| key.0 != address);
     }
 
     /// Forget every position + leverage entry for `address` (on watchlist removal).
     pub fn drop_wallet(&mut self, address: &str) {
-        // PORT NOTE: Python's `for key in [k for k in dict if k[0] == address]: del dict[key]`
-        // (collect-then-delete, a CPython iteration-invalidation workaround) → `retain` with
-        // the predicate negated — the direct single-pass Rust form of the same filter.
-        self.positions.retain(|key, _| key.0 != address);
-        self.leverage.retain(|key, _| key.0 != address);
-        // `self._epoch.pop(address, None)` — absent is fine.
-        self.epoch.remove(address);
+        self.clear_positions_and_leverage(address);
+        self.equities.remove(address);
+        self.coverage.remove(address);
+        *self.generation.entry(address.to_string()).or_insert(0) += 1;
+        // self.epoch is preserved monotonically
+    }
+
+    pub fn generation(&self, address: &str) -> u64 {
+        self.generation.get(address).copied().unwrap_or(0)
+    }
+
+    pub fn state_revision(&self, address: &str) -> u64 {
+        self.fill_epoch(address)
+    }
+
+    pub fn coverage_state(&self, address: &str) -> CoverageState {
+        self.coverage
+            .get(address)
+            .copied()
+            .unwrap_or(CoverageState::Unseeded)
+    }
+
+    pub fn set_coverage_state(&mut self, address: &str, state: CoverageState) {
+        self.coverage.insert(address.to_string(), state);
+    }
+
+    pub fn equity(&self, address: &str) -> Option<&AccountEquity> {
+        self.equities.get(address)
+    }
+
+    pub fn set_equity(&mut self, equity: AccountEquity) {
+        self.equities.insert(equity.address.clone(), equity);
+    }
+
+    pub fn mark(&self, coin: &str) -> Option<&MarkObservation> {
+        self.marks.get(coin)
+    }
+
+    pub fn set_mark(&mut self, coin: &str, px: Decimal, ts: DateTime<Utc>) {
+        self.marks.insert(
+            coin.to_string(),
+            MarkObservation {
+                coin: coin.to_string(),
+                px,
+                observed_at: ts,
+            },
+        );
     }
 
     // --- reads -------------------------------------------------------------------------
@@ -456,6 +558,50 @@ mod tests {
         assert!(!seen.check_and_add(2));
         assert!(!seen.check_and_add(3)); // evicts tid 1 (oldest)
         assert!(!seen.check_and_add(1)); // 1 was evicted, so it's "new" again
+    }
+
+    #[test]
+    fn test_scoped_seen_trades_different_coins_not_dropped() {
+        // S1: SeenTids scopes by (coin, tid). Cross-coin trades sharing a tid are
+        // both accepted rather than colliding.
+        let mut seen = SeenTids::new(10);
+        let tid = 999_999;
+        assert!(
+            !seen.check_and_add_scoped("BTC", tid),
+            "first trade on BTC must be accepted"
+        );
+        assert!(
+            !seen.check_and_add_scoped("ETH", tid),
+            "trade on ETH with identical tid is distinct and must not be dropped"
+        );
+        assert!(
+            seen.check_and_add_scoped("BTC", tid),
+            "duplicate trade on BTC with same tid must be dropped"
+        );
+    }
+
+    #[test]
+    fn test_monotonic_epoch_advances_on_reseed() {
+        // S1: reseed_wallet advances epoch monotonically rather than resetting to 0.
+        let mut book = InMemoryBook::new();
+        ingest(&mut book, "0xa", "BTC", "1", "100");
+        assert_eq!(book.fill_epoch("0xa"), 1);
+
+        let seeded = vec![seed_state_from_row(
+            "0xa",
+            "BTC",
+            d("1"),
+            Some(d("100")),
+            ts(),
+        )];
+        let applied = book.reseed_wallet("0xa", seeded, HashMap::new(), None);
+        assert!(applied.is_applied());
+        assert_eq!(
+            book.fill_epoch("0xa"),
+            2,
+            "reseed_wallet advances epoch monotonically from 1 to 2"
+        );
+        assert_eq!(book.state_revision("0xa"), 2);
     }
 }
 

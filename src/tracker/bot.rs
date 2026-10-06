@@ -578,7 +578,7 @@ impl SettingsBot {
             .lock()
             .expect("registry mutex poisoned")
             .is_tracked(address);
-        if !tracked && !self.enricher.seed_wallet(address).await {
+        if !tracked && !self.enricher.seed_wallet(address).await.is_applied() {
             self.db.add(chat_id, address, label).await?;
             return Ok(format!(
                 "💾 Saved <b>{}</b> (<code>{address}</code>) but I couldn't read its \
