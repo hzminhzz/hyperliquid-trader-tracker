@@ -8,7 +8,9 @@ Verification: tracker `make check-rs` passes (98 Rust unit tests, 11 adversarial
 
 ER1 (#25) is now **ENGINEERING_PASS** in companion engine revision `79d3e5c`: raw signed quantity is the additive primitive; event time controls horizon membership while knowledge time controls visibility; net/gross flow is accumulated before one common normalization anchor; stale/missing equity preserves raw flow while normalized flow is unavailable. The engine passes Ruff, `ty`, and **88 tests**. See [ER1 evidence](evidence/execution-review/ER1-additive-path.md).
 
-The next implementation frontier is ER2/ER3. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
+ER2 (#26) is **ENGINEERING_PASS / NATIVE-LIVE-SOURCE-BLOCKED** in companion engine revision `4c537a4`: native references remain observed-only, inferred segments are deterministic optional annotations, and mixed/two-sided activity abstains from a directional story. The engine passes Ruff, `ty`, and **97 tests**. See [ER2 evidence](evidence/execution-review/ER2-execution-annotations.md).
+
+The next implementation frontier is ER3. ER0's absent-live-traffic sub-gate remains explicit and must not be converted into a production or predictive claim.
 
 ## Latest inspection: execution and sampling review, 2026-10-06
 
