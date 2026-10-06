@@ -14,6 +14,7 @@ use rust_decimal::Decimal;
 use serde_json::Value;
 use tokio_rusqlite::Connection;
 
+use crate::models::AccountEquity;
 use crate::state::Direction;
 
 const LEDGER_SCHEMA: &str = "
@@ -115,6 +116,17 @@ pub struct TransitionParams {
     pub before_rev: u64,
     pub after_rev: u64,
     pub payload: Value,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WalletSnapshotParams {
+    pub receipt_id: i64,
+    pub wallet_id: String,
+    pub checkpoints: Vec<PositionCheckpoint>,
+    pub equity: Option<AccountEquity>,
+    pub observed_at: DateTime<Utc>,
+    pub before_rev: u64,
+    pub after_rev: u64,
 }
 
 /// Persisted checkpoint row for an open position.
@@ -259,9 +271,184 @@ impl ObservationLedger {
             .await
     }
 
-    /// Commit an observation transition atomically (C2 Step 2).
-    /// Commit an observation transition atomically (C2 Step 2).
+    /// Return whether an accepted receipt has already been fully committed.
+    /// A duplicate PENDING receipt is resumable after a crash; a COMMITTED one is a true replay.
+    pub async fn receipt_is_committed(
+        &self,
+        receipt_id: i64,
+    ) -> Result<bool, tokio_rusqlite::Error> {
+        self.conn()
+            .call(move |conn| {
+                let status: String = conn.query_row(
+                    "SELECT status FROM receipts WHERE receipt_id = ?1",
+                    rusqlite::params![receipt_id],
+                    |row| row.get(0),
+                )?;
+                Ok(status == "COMMITTED")
+            })
+            .await
+    }
+
+    /// Commit one observation transition atomically (C2 Step 2).
     pub async fn commit_transition(
+        &self,
+        params: TransitionParams,
+    ) -> Result<CanonicalEvent, tokio_rusqlite::Error> {
+        let mut events = self.commit_transitions(vec![params]).await?;
+        Ok(events.remove(0))
+    }
+
+    /// Commit all wallet projections of one economic source receipt in one transaction.
+    /// The receipt is marked COMMITTED only after every checkpoint/outbox row is durable.
+    pub async fn commit_transitions(
+        &self,
+        params: Vec<TransitionParams>,
+    ) -> Result<Vec<CanonicalEvent>, tokio_rusqlite::Error> {
+        if params.is_empty() {
+            return Ok(Vec::new());
+        }
+        let ledger_id = self.ledger_id.clone();
+        let receipt_id = params[0].receipt_id;
+        self.conn()
+            .call(move |conn| {
+                if params.iter().any(|p| p.receipt_id != receipt_id) {
+                    return Err(rusqlite::Error::InvalidQuery);
+                }
+                let tx = conn.transaction()?;
+                let mut events = Vec::with_capacity(params.len());
+
+                for params in params {
+                    let wallet = params.wallet_id;
+                    let coin = params.coin;
+                    let event_kind = params.event_kind;
+                    let instrument_id = params.instrument_id;
+                    let payload_str = params.payload.to_string();
+                    let event_time_str = params.event_time.to_rfc3339();
+                    let received_at_str = params.received_at.to_rfc3339();
+                    let known_at = Utc::now();
+                    let known_at_str = known_at.to_rfc3339();
+                    let checkpoint = params.checkpoint;
+                    let before_rev = params.before_rev;
+                    let after_rev = params.after_rev;
+                    let payload = params.payload;
+                    let event_time = params.event_time;
+                    let received_at = params.received_at;
+
+                    match &checkpoint {
+                        Some(cp) => {
+                            let dir_str = match cp.direction {
+                                Direction::Long => "Long",
+                                Direction::Short => "Short",
+                            };
+                            tx.execute(
+                                "INSERT INTO position_checkpoints (
+                                    address, coin, szi, direction, avg_entry, opened_at,
+                                    last_added_at, realized_pnl, revision, generation, coverage, updated_at
+                                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                                ON CONFLICT(address, coin) DO UPDATE SET
+                                    szi = excluded.szi,
+                                    direction = excluded.direction,
+                                    avg_entry = excluded.avg_entry,
+                                    opened_at = excluded.opened_at,
+                                    last_added_at = excluded.last_added_at,
+                                    realized_pnl = excluded.realized_pnl,
+                                    revision = excluded.revision,
+                                    generation = excluded.generation,
+                                    coverage = excluded.coverage,
+                                    updated_at = excluded.updated_at",
+                                rusqlite::params![
+                                    cp.address,
+                                    cp.coin,
+                                    cp.szi.to_string(),
+                                    dir_str,
+                                    cp.avg_entry.to_string(),
+                                    cp.opened_at.to_rfc3339(),
+                                    cp.last_added_at.to_rfc3339(),
+                                    cp.realized_pnl.to_string(),
+                                    cp.revision as i64,
+                                    cp.generation as i64,
+                                    cp.coverage,
+                                    cp.updated_at.to_rfc3339(),
+                                ],
+                            )?;
+                        }
+                        None => {
+                            tx.execute(
+                                "DELETE FROM position_checkpoints WHERE address = ?1 AND coin = ?2",
+                                rusqlite::params![wallet, coin],
+                            )?;
+                        }
+                    }
+
+                    tx.execute(
+                        "UPDATE ledger_meta SET current_seq = current_seq + 1 WHERE ledger_id = ?1",
+                        rusqlite::params![ledger_id],
+                    )?;
+                    let seq: u64 = tx.query_row(
+                        "SELECT current_seq FROM ledger_meta WHERE ledger_id = ?1",
+                        rusqlite::params![ledger_id],
+                        |r| r.get(0),
+                    )?;
+                    let event_id = format!("{ledger_id}:{seq}");
+
+                    tx.execute(
+                        "INSERT INTO outbox_events (
+                            seq, event_id, schema_version, ledger_id, kind, environment,
+                            instrument_id, wallet_id, event_time, received_at, known_at,
+                            cause_receipt_id, before_revision, after_revision, payload, quality
+                        ) VALUES (?1, ?2, '1', ?3, ?4, 'mainnet', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 'valid')",
+                        rusqlite::params![
+                            seq as i64,
+                            event_id,
+                            ledger_id,
+                            event_kind,
+                            instrument_id,
+                            wallet,
+                            event_time_str,
+                            received_at_str,
+                            known_at_str,
+                            receipt_id,
+                            before_rev as i64,
+                            after_rev as i64,
+                            payload_str,
+                        ],
+                    )?;
+
+                    events.push(CanonicalEvent {
+                        schema_version: "1".to_string(),
+                        event_id,
+                        cursor: LedgerCursor {
+                            ledger_id: ledger_id.clone(),
+                            seq,
+                        },
+                        kind: event_kind,
+                        environment: "mainnet".to_string(),
+                        instrument_id,
+                        wallet_id: wallet,
+                        event_time,
+                        received_at,
+                        known_at,
+                        cause_ids: vec![receipt_id.to_string()],
+                        before_revision: before_rev,
+                        after_revision: after_rev,
+                        payload,
+                        quality: "valid".to_string(),
+                    });
+                }
+
+                tx.execute(
+                    "UPDATE receipts SET status = 'COMMITTED' WHERE receipt_id = ?1",
+                    rusqlite::params![receipt_id],
+                )?;
+                tx.commit()?;
+                Ok(events)
+            })
+            .await
+    }
+
+    /* legacy single-transition implementation retained below for reference */
+    #[allow(dead_code)]
+    async fn commit_transition_legacy(
         &self,
         params: TransitionParams,
     ) -> Result<CanonicalEvent, tokio_rusqlite::Error> {
@@ -397,6 +584,159 @@ impl ObservationLedger {
                     before_revision: before_rev,
                     after_revision: after_rev,
                     payload,
+                    quality: "valid".to_string(),
+                })
+            })
+            .await
+    }
+
+    /// Atomically replace one wallet's authoritative current-state checkpoint and publish
+    /// a non-trade ACCOUNT_SNAPSHOT event. This is the durable reconciliation boundary used
+    /// by downstream projections; seed timestamps remain partial-history observations.
+    pub async fn commit_wallet_snapshot(
+        &self,
+        params: WalletSnapshotParams,
+    ) -> Result<CanonicalEvent, tokio_rusqlite::Error> {
+        let WalletSnapshotParams {
+            receipt_id,
+            wallet_id,
+            checkpoints,
+            equity,
+            observed_at,
+            before_rev,
+            after_rev,
+        } = params;
+        let ledger_id = self.ledger_id.clone();
+        let payload_positions: Vec<Value> = checkpoints
+            .iter()
+            .map(|cp| {
+                serde_json::json!({
+                    "instrument_id": format!("hyperliquid:mainnet:perp:default:{}", cp.coin),
+                    "coin": cp.coin,
+                    "quantity_after": cp.szi.to_string(),
+                    "avg_entry": cp.avg_entry.to_string(),
+                    "revision": cp.revision,
+                    "generation": cp.generation,
+                    "coverage": cp.coverage,
+                    "opened_at_known": false
+                })
+            })
+            .collect();
+        let payload_equity = equity.as_ref().map(|eq| {
+            serde_json::json!({
+                "account_value": eq.account_value.to_string(),
+                "total_raw_usd": eq.total_raw_usd.map(|v| v.to_string()),
+                "total_margin_used": eq.total_margin_used.map(|v| v.to_string()),
+                "observed_at": eq.observed_at.to_rfc3339()
+            })
+        });
+        let payload = serde_json::json!({
+            "positions": payload_positions,
+            "equity": payload_equity,
+            "coverage": checkpoints.first().map(|cp| cp.coverage.clone()).unwrap_or_else(|| "KnownFlat".to_string()),
+            "partial_history": true
+        });
+        let payload_str = payload.to_string();
+        let event_time_str = observed_at.to_rfc3339();
+        let received_at = Utc::now();
+        let received_at_str = received_at.to_rfc3339();
+        let known_at = Utc::now();
+        let known_at_str = known_at.to_rfc3339();
+        let instrument_id = format!("hyperliquid:mainnet:account:{wallet_id}");
+        let wallet_for_db = wallet_id.clone();
+        let wallet_for_event = wallet_id.clone();
+        let instrument_for_db = instrument_id.clone();
+        let instrument_for_event = instrument_id.clone();
+        let payload_for_event = payload.clone();
+
+        self.conn()
+            .call(move |conn| {
+                let tx = conn.transaction()?;
+                tx.execute(
+                    "DELETE FROM position_checkpoints WHERE address = ?1",
+                    rusqlite::params![wallet_for_db],
+                )?;
+                for cp in &checkpoints {
+                    let dir_str = match cp.direction {
+                        Direction::Long => "Long",
+                        Direction::Short => "Short",
+                    };
+                    tx.execute(
+                        "INSERT INTO position_checkpoints (
+                            address, coin, szi, direction, avg_entry, opened_at,
+                            last_added_at, realized_pnl, revision, generation, coverage, updated_at
+                        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                        rusqlite::params![
+                            cp.address,
+                            cp.coin,
+                            cp.szi.to_string(),
+                            dir_str,
+                            cp.avg_entry.to_string(),
+                            cp.opened_at.to_rfc3339(),
+                            cp.last_added_at.to_rfc3339(),
+                            cp.realized_pnl.to_string(),
+                            cp.revision as i64,
+                            cp.generation as i64,
+                            cp.coverage,
+                            cp.updated_at.to_rfc3339(),
+                        ],
+                    )?;
+                }
+                tx.execute(
+                    "UPDATE ledger_meta SET current_seq = current_seq + 1 WHERE ledger_id = ?1",
+                    rusqlite::params![ledger_id],
+                )?;
+                let seq: u64 = tx.query_row(
+                    "SELECT current_seq FROM ledger_meta WHERE ledger_id = ?1",
+                    rusqlite::params![ledger_id],
+                    |r| r.get(0),
+                )?;
+                let event_id = format!("{ledger_id}:{seq}");
+                tx.execute(
+                    "INSERT INTO outbox_events (
+                        seq, event_id, schema_version, ledger_id, kind, environment,
+                        instrument_id, wallet_id, event_time, received_at, known_at,
+                        cause_receipt_id, before_revision, after_revision, payload, quality
+                    ) VALUES (?1, ?2, '1', ?3, 'ACCOUNT_SNAPSHOT', 'mainnet', ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'valid')",
+                    rusqlite::params![
+                        seq as i64,
+                        event_id,
+                        ledger_id,
+                        instrument_for_db,
+                        wallet_for_db,
+                        event_time_str,
+                        received_at_str,
+                        known_at_str,
+                        receipt_id,
+                        before_rev as i64,
+                        after_rev as i64,
+                        payload_str,
+                    ],
+                )?;
+                tx.execute(
+                    "UPDATE receipts SET status = 'COMMITTED' WHERE receipt_id = ?1",
+                    rusqlite::params![receipt_id],
+                )?;
+                tx.commit()?;
+
+                Ok(CanonicalEvent {
+                    schema_version: "1".to_string(),
+                    event_id,
+                    cursor: LedgerCursor {
+                        ledger_id,
+                        seq,
+                    },
+                    kind: "ACCOUNT_SNAPSHOT".to_string(),
+                    environment: "mainnet".to_string(),
+                    instrument_id: instrument_for_event,
+                    wallet_id: wallet_for_event,
+                    event_time: observed_at,
+                    received_at,
+                    known_at,
+                    cause_ids: vec![receipt_id.to_string()],
+                    before_revision: before_rev,
+                    after_revision: after_rev,
+                    payload: payload_for_event,
                     quality: "valid".to_string(),
                 })
             })

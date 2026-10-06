@@ -1,7 +1,19 @@
 # V2 forward-qualified expert signal engine
 
 **Date:** 2026-10-06  
-**Status:** implementation-ready architecture/research specification. No V2 scoring implementation is authorized by this document.
+**Status:** V2 design with a proposed execution/sampling amendment. No implementation or predictive promotion is authorized by this document.
+
+## Execution-review amendment, 2026-10-06
+
+The current review is [EXECUTION-REVIEW](EXECUTION-REVIEW.md), with inspected code findings in its section 2 and proposed acceptance dependencies in [plan.md](../plan.md). The baseline critique below predates the current tracker `2f948f8` and engine `ef8d7c1`; see [STATUS](STATUS.md) for present implementation and test claims.
+
+The proposed next-stage representation is an additive, point-in-time quantity path with optional order/program/segment annotations, not a mandatory fill-to-order-to-intent hierarchy. Execution does not prove discretionary belief. Native linkage is stronger evidence than a timing heuristic, but even a confirmed program can cross several position lifecycles.
+
+State, net/gross flow and missingness must work without episode classification. Materiality controls prominence and coalesced interrupts, never observation retention. Normalize accumulated quantities using compatible common anchors; preserve event recency separately from receipt and knowledge time. Bound flow influence as well as state influence, without discarding raw measurements.
+
+The initial proposed cadence is aligned one-minute wallet and ensemble evidence with bounded material-event interrupts. Five-minute scoring and exposure-event bars are registered comparators, not presumed inferior or superior. Approximately 120 observed wallets and 40-60 supported global behavioral groups are planning hypotheses; per-instrument active support must be measured and clustering must not be tuned to a desired count.
+
+Live source/durability/snapshot ownership and outcome-cost correctness must be qualified before the next predictive experiment. Existing V2 functions and passing tests are not evidence that the live V2 pipeline is integrated or profitable. The exact state machines, detector uncertainty, adversarial cases and two-stage experiment are specified in EXECUTION-REVIEW; they remain proposed until accepted.
 
 This document is the compact synthesis of the V2 redesign. Domain terms live in [CONTEXT](../CONTEXT.md); normative research semantics in [RESEARCH](RESEARCH.md); acceptance in [QUALIFICATION](QUALIFICATION.md); execution order in [plan](../plan.md).
 

@@ -1,6 +1,8 @@
 # System design: an evidence-driven trader ensemble
 
-**Status:** target design, not implemented. Read [STATUS](STATUS.md) for inspected reality. This design retains the approved KonScanner fork as mandatory infrastructure.
+**Status:** target design with capabilities implemented to different qualification levels. Read [STATUS](STATUS.md) for inspected reality. This design retains the approved KonScanner fork as mandatory infrastructure.
+
+**Proposed execution refinement (2026-10-06):** preserve the two-process ownership model and evidence-to-policy separation. Inside the Python evidence module, an additive exposure path is the primary representation; observed orders/native programs and inferred execution segments are optional linked annotations, not prerequisite stages in a mandatory intent hierarchy. A detector failure must not remove otherwise valid quantity/state/flow evidence. Aligned evidence cuts, explicit window expiry and contribution replacement prevent child executions from becoming extra votes. [EXECUTION-REVIEW](EXECUTION-REVIEW.md) owns the detailed proposal and [plan.md](../plan.md) its proposed correctness-first sequence. No new service, per-fill agent loop or financial authority is introduced.
 
 ## Purpose and optimization order
 

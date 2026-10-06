@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures_util::FutureExt;
-use tokio::sync::Semaphore;
+use tokio::sync::{Mutex as AsyncMutex, Semaphore};
 use tokio_util::sync::CancellationToken;
 
 use crate::book::{InMemoryBook, ReconcileOutcome};
@@ -281,17 +281,18 @@ async fn amain(settings: Settings) -> Result<()> {
     ledger.connect().await?;
     let ledger = Arc::new(ledger);
     let book = Arc::new(Mutex::new(InMemoryBook::new()));
+    let state_gate = Arc::new(AsyncMutex::new(()));
     let registry = Arc::new(Mutex::new(Registry::new()));
     let stop = CancellationToken::new();
 
     // PORT NOTE: `async with HyperliquidClient(settings)` → plain constructor; reqwest
     // clients close on drop, so the context-manager scope is the function body itself.
     let client: Arc<dyn InfoClient> = Arc::new(HyperliquidClient::new(settings.clone()));
-    let enricher = Arc::new(Enricher::new(
-        settings.clone(),
-        Arc::clone(&book),
-        Arc::clone(&client),
-    ));
+    let enricher = Arc::new(
+        Enricher::new(settings.clone(), Arc::clone(&book), Arc::clone(&client))
+            .with_state_gate(Arc::clone(&state_gate))
+            .with_ledger(Arc::clone(&ledger)),
+    );
 
     // PORT NOTE: the Python imported telegram lazily inside the `if` (optional extra); the
     // Rust bot module is always compiled — only the wiring is conditional.
@@ -308,17 +309,23 @@ async fn amain(settings: Settings) -> Result<()> {
     {
         let app = Arc::new(Application::new(token));
         sender = Arc::new(TelegramSender::new(Arc::clone(&app)));
-        // PORT NOTE: in Python, *constructing* SettingsBot registered the handlers on the
-        // Application; here handler dispatch lives in handle_update, fed by the poll loop.
-        settings_bot = Some(Arc::new(SettingsBot::new(
-            settings.clone(),
-            Arc::clone(&app),
-            Arc::clone(&db),
-            Arc::clone(&book),
-            Arc::clone(&registry),
-            Arc::clone(&enricher),
-        )?));
-        application = Some(app);
+        if settings.telegram_polling_enabled {
+            // PORT NOTE: in Python, *constructing* SettingsBot registered the handlers on the
+            // Application; here handler dispatch lives in handle_update, fed by the poll loop.
+            settings_bot = Some(Arc::new(SettingsBot::new(
+                settings.clone(),
+                Arc::clone(&app),
+                Arc::clone(&db),
+                Arc::clone(&book),
+                Arc::clone(&registry),
+                Arc::clone(&enricher),
+            )?));
+            application = Some(app);
+        } else {
+            tracing::info!(
+                "Telegram send-only mode enabled; command polling is disabled for this process"
+            );
+        }
     } else {
         tracing::warn!("no TELEGRAM_BOT_TOKEN configured — notifications will be logged only");
         sender = Arc::new(LoggingSender::default());
@@ -340,7 +347,8 @@ async fn amain(settings: Settings) -> Result<()> {
         Arc::clone(&client),
         pnl_resolver,
     )
-    .with_ledger(Arc::clone(&ledger));
+    .with_ledger(Arc::clone(&ledger))
+    .with_state_gate(Arc::clone(&state_gate));
     let listener_stop = listener.stop_token();
 
     // PORT NOTE: `loop.add_signal_handler(sig, lambda: (stop.set(), listener.stop()))` →

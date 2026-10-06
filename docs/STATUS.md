@@ -1,5 +1,37 @@
 # Inspected status and implementation gaps
 
+## ER0 implementation: source/state authority, 2026-10-06
+
+ER0 (#31) is **ENGINEERING_PASS / LIVE_SOURCE_CAPSULE_BLOCKED** on the milestone branch. Rust now durably accepts watched trades before publishing state, commits all watched-wallet projections of one economic trade atomically, includes source time in trade identity, and serializes reconciliation publication against live fills. Rust reconciliation also emits durable `ACCOUNT_SNAPSHOT` events with current positions and account equity. The companion Python engine revision `b443a5a` consumes those snapshots, no longer polls `clearinghouseState` as a competing state writer, preserves full instrument IDs, and keeps partial-history open ages unknown.
+
+Verification: tracker `make check-rs` passes (98 Rust unit tests, 11 adversarial-observation tests, 9 crash-recovery tests); companion engine passes Ruff, `ty`, and **81 tests**. The existing local observation ledger was inspected read-only but has `current_seq = 0`, so no real source receipt-to-projection capsule or latency/coverage qualification is claimed. See [ER0 evidence](evidence/execution-review/ER0-source-state-authority.md). No deployment, financial execution, or predictive promotion was performed.
+
+ER1 (#25) is now **ENGINEERING_PASS** in companion engine revision `79d3e5c`: raw signed quantity is the additive primitive; event time controls horizon membership while knowledge time controls visibility; net/gross flow is accumulated before one common normalization anchor; stale/missing equity preserves raw flow while normalized flow is unavailable. The engine passes Ruff, `ty`, and **88 tests**. See [ER1 evidence](evidence/execution-review/ER1-additive-path.md).
+
+ER2 (#26) is **ENGINEERING_PASS / NATIVE-LIVE-SOURCE-BLOCKED** in companion engine revision `4c537a4`: native references remain observed-only, inferred segments are deterministic optional annotations, and mixed/two-sided activity abstains from a directional story. The engine passes Ruff, `ty`, and **97 tests**. See [ER2 evidence](evidence/execution-review/ER2-execution-annotations.md).
+
+ER3 (#27) is **ENGINEERING_PASS / LIVE-COVERAGE-MEASUREMENT-BLOCKED** in companion engine revision `1da1321`: coherent minute cuts carry all revisions/watermarks, material interrupts coalesce to the latest contribution, normalized wallet flow is bounded before fixed cluster budgets, and missing mass is not silently reallocated. The engine passes Ruff, `ty`, and **101 tests**. See [ER3 evidence](evidence/execution-review/ER3-coherent-cuts.md).
+
+ER4 (#28) is **PROTOCOL_ENGINEERING_PASS / EMPIRICAL_EVALUATION_BLOCKED** in companion engine revision `f3ae0be`: R0/R1/R2 are frozen, direction-before-cost outcome semantics and price-lateness censoring are qualified, and absent/immature prospective data returns BLOCKED rather than promotion. The engine full suite passes **106 tests**. See [ER4 evidence](evidence/execution-review/ER4-representation-experiment.md).
+
+ER5 (#29) is **PROTOCOL_ENGINEERING_PASS / NEW-HOLDOUT-BLOCKED** in companion engine revision `ae7cfe6`: Stage 2 is separated from ER4, registers 60s/300s/hybrid/exposure-event clocks, uses an as-known common grid plus chronological target-change replay, and blocks when no new untouched holdout exists. The engine full suite passes **111 tests**. See [ER5 evidence](evidence/execution-review/ER5-cadence-universe.md).
+
+ER6 (#30) is **DESCRIPTIVE ENGINEERING COMPLETE / PREDICTIVE QUALIFICATION BLOCKED**: companion engine qualification logic separates engineering, descriptive, historical-predictive, live-forward, production-advisory, and financial-execution authority. With ER4/ER5 prospectively blocked, predictive emission stays disabled, no policy is promoted, expected-return calibration is unavailable, and financial execution remains forbidden. The companion engine passes Ruff, focused `ty`, and **115 tests**. See [ER6 decision](evidence/execution-review/ER6-qualification-decision.md).
+
+All ER0-ER6 implementation/protocol slices in milestone #3 are now materialized on the milestone branch. Empirical gates that require future recorded observations remain BLOCKED by design; they must not be converted into production or predictive claims merely because the implementation issues are complete.
+
+## Latest inspection: execution and sampling review, 2026-10-06
+
+Tracker HEAD inspected: `2f948f81094cfb18fa2799eb1dcce5c748973148`. Expert-engine HEAD inspected: `ef8d7c19f4bfdf76b86d35827145679ae9d1c346`. Both working trees were clean before the documentation-only review. The accessible tracker checkout was `/home/quant/dev/hyperliquid-trader-tracker`; the supplied `/home/dev/hyperliquid-trader-tracker` path was outside the connector's allowed roots.
+
+`PYTHONDONTWRITEBYTECODE=1 uv run --frozen --no-sync pytest -q -p no:cacheprovider` passed **79 engine tests in 3.57s**. No Rust suite, live deployment health, complete wallet roster, measured cluster count, or predictive-performance validation was run in this review.
+
+The current runtime still computes V1 equal-wallet consensus rather than running the V2 evidence pipeline. V2 descriptive functions exist, but optional order/program metadata, execution segmentation, materiality and aligned live evidence cuts remain unqualified. Code inspection also identified live durability error-handling risks, competing snapshot/projection authority, missing-flow ambiguity, namespace loss and outcome/cost composition risks. These are documented findings, not claims of reproduced production incidents; see [EXECUTION-REVIEW section 2](EXECUTION-REVIEW.md#2-verified-repository-findings-and-implications).
+
+The [V2 evidence index](evidence/v2/INDEX.md) retains V26 INCONCLUSIVE, V29 REJECTED / ENGINEERING_PASS and V30/V31 NOT_ACTIVATED. No new predictive promotion is supported by this inspection. The next recommended frontier is correctness qualification, additive path evidence, then registered representation/cadence experiments. Proposed design changes are recorded in [EXECUTION-REVIEW](EXECUTION-REVIEW.md) and [plan.md](../plan.md); they are not implementation authorization.
+
+## Earlier V2 baseline inspection
+
 **Inspection:** 2026-10-06. **Historical V1 baseline:** `ffff331aa0f52e299ee995e2c96246c1253712a7`. **Current tracker head inspected for V2:** `9b55228`. **Current expert-engine head inspected for V2:** `bf88f7a`.
 
 This page records code inspection, not a running-service health check. The fork is `hzminhzz/hyperliquid-trader-tracker`; its VPS checkout is `/home/quant/dev/hyperliquid-trader-tracker`. The separate scoring application is `/home/quant/dev/hyperliquid-expert-ensemble`. At the V2 inspection both checkouts matched their `origin/main`; the tracker also had an `upstream` remote for KonScanner. Recheck these facts before implementation.
@@ -61,7 +93,7 @@ The official [rate-limit reference](https://hyperliquid.gitbook.io/hyperliquid-d
 
 The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/for-developers/api/info-endpoint) bounds fills history, including a 10,000-fill availability limit for `userFillsByTime`. Therefore an external snapshot can repair current quantity without recovering all missed historical activity. Time pagination requires overlap and duplicate handling, particularly at equal timestamps; do not blindly increment past the last timestamp.
 
-## Current frontier
+## Historical V1 slice completion
 
 **S0 baseline qualification completed:** see [docs/evidence/Q01-baseline-manifest.md](evidence/Q01-baseline-manifest.md) for the verified evidence manifest (Q01).
 

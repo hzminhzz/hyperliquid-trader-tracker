@@ -32,13 +32,19 @@ type Key = (String, String);
 pub struct TradeKey {
     pub coin: String,
     pub tid: i64,
+    pub source_time_ms: i64,
 }
 
 impl TradeKey {
     pub fn new(coin: impl Into<String>, tid: i64) -> Self {
+        Self::with_time(coin, tid, 0)
+    }
+
+    pub fn with_time(coin: impl Into<String>, tid: i64, source_time_ms: i64) -> Self {
         Self {
             coin: coin.into(),
             tid,
+            source_time_ms,
         }
     }
 }
@@ -99,9 +105,9 @@ impl SeenTids {
         }
     }
 
-    /// Check and record scoped trade by (coin, tid).
-    pub fn check_and_add_scoped(&mut self, coin: &str, tid: i64) -> bool {
-        let key = TradeKey::new(coin, tid);
+    /// Check and record scoped trade by (source time, coin, tid).
+    pub fn check_and_add_scoped_at(&mut self, coin: &str, tid: i64, source_time_ms: i64) -> bool {
+        let key = TradeKey::with_time(coin, tid, source_time_ms);
         if self.set.contains(&key) {
             return true;
         }
@@ -117,9 +123,14 @@ impl SeenTids {
         false
     }
 
-    /// Check and record trade with default empty coin scope (backward compatibility).
+    /// Backward-compatible scoped check for tests/callers without source time.
+    pub fn check_and_add_scoped(&mut self, coin: &str, tid: i64) -> bool {
+        self.check_and_add_scoped_at(coin, tid, 0)
+    }
+
+    /// Check and record trade with default empty coin/time scope (backward compatibility).
     pub fn check_and_add(&mut self, tid: i64) -> bool {
-        self.check_and_add_scoped("", tid)
+        self.check_and_add_scoped_at("", tid, 0)
     }
 }
 /// Per-`(address, coin)` position state + a per-`(address, coin)` leverage cache.
@@ -127,7 +138,7 @@ impl SeenTids {
 // matching registry.rs. Plain HashMaps (not IndexMap): no code path iterates these where
 // order is observable (lookups, insert/remove, len; drop_wallet's key scan is
 // order-insensitive).
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct InMemoryBook {
     positions: HashMap<Key, PositionState>,
     // PORT NOTE: leverage `int` → i64 (models.rs narrows the JSON leverage via Value::as_i64

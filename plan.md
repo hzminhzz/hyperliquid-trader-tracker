@@ -1,6 +1,28 @@
 # Forward-qualified expert signal engine: V2 implementation/research plan
 
-**Status:** implementation-ready architecture/research plan, 2026-10-06. V1 is complete and remains the descriptive/advisory baseline. This plan does not itself implement V2.
+**Status:** V2 plan with a proposed execution/research amendment, 2026-10-06. Historical slice plans and evidence remain below; their completion must be read from the evidence index, not inferred from this plan. No implementation, issue creation, deployment or predictive promotion is authorized by this documentation review.
+
+## Proposed next frontier: execution correctness before richer scoring
+
+Read [EXECUTION-REVIEW](docs/EXECUTION-REVIEW.md) for the inspected findings, proposed state machines and registered experiment design. Current inspected heads are tracker `2f948f8` and engine `ef8d7c1`; the engine's 79 passing tests do not establish live V2 integration or predictive value. [STATUS](docs/STATUS.md) owns the current claim boundary.
+
+Execution status on the milestone branch: ER0-ER6 implementation/protocol slices are complete. ER0/ER2/ER3 empirical live-source sub-gates remain BLOCKED by absent recorded traffic; ER4 has no prospective outcome-mature rows; ER5 has no independent untouched Stage-2 holdout; ER6 therefore keeps predictive emission disabled. See `docs/evidence/execution-review/`. New data may advance the evidence gates later without rewriting these completed implementation slices.
+
+The following are the materialized execution work packages; their acceptance evidence, not this table, determines completion:
+
+| Package | Depends on | Deliverable and acceptance |
+|---|---|---|
+| ER0: qualify source and state authority | None | Pin source field/coverage/rate capabilities; fault-inject receipt and transition failures, duplicate/restart/counterparty boundaries and snapshot races. Rust owns scoped position/equity/reconciliation authority. Demonstrate one real receipt-to-projection path. No new live-trading authority. |
+| ER1: additive path evidence | ER0 | Preserve exact quantity transitions, net/gross flow, true/unknown ages, event-versus-knowledge time and normalization provenance. Split invariance, round-trip cancellation, stale-equity missingness and old-backfill non-freshness must pass. |
+| ER2: optional execution annotations | ER1 | Explicit native parent links plus conservative causal segments; no requirement that a detector succeeds before state/flow exist. Qualify false merges/splits and delay without outcome-based tuning. Iceberg labels remain unavailable without the necessary source. |
+| ER3: coherent cuts and bounded contributions | ER1; annotations optional | One-minute common cuts; deterministic expiry; coalesced material interrupts; raw descriptive flow plus bounded influence; supported per-instrument breadth and unknown redundancy. Clone, leader/follower, stale-cut and simultaneous-market-event fixtures pass. |
+| ER4: representation experiment | ER1 and ER3; ER2 only for the annotation arm | Preregister state-only, additive path, and path-plus-annotation comparisons at identical cuts; market-only comparator, prospective approximately 50/120 wallet cuts, signed-cost and outcome-availability checks, dependence-aware intervals. Retain INCONCLUSIVE/REJECTED outcomes. |
+| ER5: cadence and universe experiment | ER4 | Freeze the simplest supported representation and use a new untouched evaluation interval for 60s, 300s, hybrid interrupts and exposure-event clocks. Evaluate common market-time rows plus actual-action replay; report latency, costs, missingness and marginal universe value. |
+| ER6: reconsider predictive qualification | ER4/ER5 evidence | Continue V29-V31 only when their economic and operational predicates are actually satisfied. Do not equate a descriptive engine or passing synthetic tests with qualification. |
+
+Approximately 120 observed wallets is a research budget, not a required voter count. The original approximately 50 remain a comparator. Do not force clustering to yield 50-70 groups, and do not expand to 200 without measurable novelty/coverage or incremental value. One-minute and segmentation thresholds are test parameters, not proven optima. No fill is dropped by a materiality gate.
+
+The previous V20-V31 issue materialization section is retained for traceability. Before any implementation, reconcile these packages with actual open issues and current code; do not blindly recreate or close historical issues.
 
 ## Goal and terminal predicate
 
@@ -19,7 +41,7 @@ If no candidate demonstrates forward predictive value, V2 research may terminate
 
 Authorities: [SYSTEM](docs/SYSTEM.md), [CONTEXT](CONTEXT.md), [CONTRACTS](docs/CONTRACTS.md), [RESEARCH](docs/RESEARCH.md), [QUALIFICATION](docs/QUALIFICATION.md), [OPERATIONS](docs/OPERATIONS.md).
 
-## Verified starting point
+## Historical V2 starting point
 
 - Tracker repository main: `9b55228`.
 - Expert-engine repository main inspected at `bf88f7a`.
