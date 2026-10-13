@@ -17,6 +17,10 @@ Live source/durability/snapshot ownership and outcome-cost correctness must be q
 
 This document is the compact synthesis of the V2 redesign. Domain terms live in [CONTEXT](../CONTEXT.md); normative research semantics in [RESEARCH](RESEARCH.md); acceptance in [QUALIFICATION](QUALIFICATION.md); execution order in [plan](../plan.md).
 
+## 2026-10-13 copy-opportunity interpretation
+
+The signal tower adds an explicit **as-known CopyOpportunity** between descriptive cluster evidence and prospective signal policy. Every static consensus target and minute cut remains a descriptive comparator; a new actionable trade must be backed by a novel source action, independently supported opportunity, and executable-time hypothesis. In particular, REDUCE-LONG is not ENTER-SHORT and CLOSE-SHORT is not ENTER-LONG. The source's signed execution markout cannot qualify follower entry returns. Preserve older R0/R1/R2 and ER4/ER5 plans; new research work and resource controls are defined in [DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md) and the updated root [plan](../plan.md). This is design only, not newly promoted implementation.
+
 ## A. Critique of the current scoring model
 
 ### Verified facts

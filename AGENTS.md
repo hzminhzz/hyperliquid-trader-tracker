@@ -14,7 +14,8 @@ Read [docs/STATUS.md](docs/STATUS.md) to distinguish inspected implementation fr
 | Operate, diagnose, delegate, or spend resources | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
 | Change normalization, state/flow evidence, similarity, predictive scoring, signal policy, or account advice | [docs/SIGNAL-V2.md](docs/SIGNAL-V2.md), [docs/RESEARCH.md](docs/RESEARCH.md) |
 | Implement or verify | Relevant slice in [plan.md](plan.md), then [docs/QUALIFICATION.md](docs/QUALIFICATION.md) |
-| Reconsider a costly choice | [ADR-0001](docs/adr/0001-agent-operating-model.md) |
+| Reconsider a costly choice | [ADR-0001](docs/adr/0001-agent-operating-model.md), [ADR-0002](docs/adr/0002-preserve-evidence-before-prediction.md), [ADR-0003](docs/adr/0003-copy-opportunity-decision-seam.md) |
+| Design copy-entry intelligence, first-actionable opportunities, agent evidence and resource-aware research | [DECISION-INTELLIGENCE](docs/DECISION-INTELLIGENCE.md), then [plan.md](plan.md) DI0–DI7 |
 
 The inherited [DESIGN](docs/DESIGN.md) is historical, not the current target. Future `copytrade` commands are not implemented at baseline; discover actual capabilities before invoking them.
 

@@ -6,6 +6,12 @@
 
 For the proposed experiment, keep costs outside the directional sign transform; bound outcome-price lateness and track price availability; evaluate all clocks on common market-time rows with dependence-aware uncertainty. Selecting a representation in Stage 1 consumes that holdout: Stage 2 must use a new untouched evaluation interval or an independently frozen protocol. Predictive promotion remains blocked until the corresponding evidence exists.
 
+## Decision-opportunity and research-economics amendment, 2026-10-13
+
+[DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md) supplements the R0-R2 representation/cadence protocol with a causally first-actionable copy-opportunity unit. Source-wallet success, `sign(delta)` execution-flow markout, hypothetical mid-to-mid signal return and latency/cost-adjusted follower return are different research targets and must never share an ambiguous `net_pnl` label. A long reduction is a REDUCE-LONG observation, not a SELL-SHORT trading instruction. Only a qualified new position or predeclared independent contrarian hypothesis may emit an opposing entry candidate.
+
+Preregister first the minimum testable pair: (1) fresh independent accumulation against matched market-only controls; (2) de-risking warnings against ordinary profit-taking controls. Freeze actionability/quote latency, one primary horizon, entry/expiry, common risk/cost convention, conditional universe, negative eligible periods, independent episode grouping and scientific stopping budget before looking at labels. Preserve R0/R1/R2 and V1 as comparators. Evaluate incremental lift over same-coin momentum/volatility/time controls with purged chronological splits and time/cluster block uncertainty. Do not count 1m repeated snapshots, child fills, matched horizons or repeated Telegram sends as independent observations. Record market-only explanations and null findings as durable results. Complex skill/leader-follower learning and sizing remain blocked until matched baselines and genuinely new holdout data exist.
+
 ## R1. Separate observation, description, prediction, and action
 
 The system has four different epistemic layers:

@@ -8,6 +8,10 @@ The [execution review](EXECUTION-REVIEW.md#11-agent-operable-design) extends the
 
 Capabilities must distinguish implemented, qualified, proposed and blocked behavior. Compact read-only responses expand by evidence ID and reference exact receipts, revisions and experiment manifests. A validated lesson is a reproducible fixture plus one retained decision, not an accumulating transcript. These new inspection fields remain proposed until implemented; no displayed example is proof of command availability.
 
+## Agent-first opportunity operating amendment, 2026-10-13
+
+[DECISION-INTELLIGENCE D5-D8](DECISION-INTELLIGENCE.md) defines the proposed operator view, resource tiers and explainable decision capsule. Extend the **existing** inspect/explain/evaluate/plan/apply implementation only after the backing product is verified; do not advertise proposed subcommands as deployed. A single coherent brief should identify running vs proposed capabilities and revisions, source-to-decision and decision-to-outcome lags, live coverage gaps, resource/OOM headroom, market/cost-only comparators, eligible new opportunity IDs and their blockers, and Telegram delivery independently. Default to changed economic behavior rather than unlimited recent database rows. `explain` must resolve a frozen opportunity into exact source transitions, accepted knowledge cut, pricing assumptions, clustered support, policy and eventual paired outcomes. An agent recommends reproducible, bounded information-gaining experiments, not direct financial effects. Operations should return explicit budget/cost/reason, not silently run unbounded sampling or block ingestion.
+
 ## O1. A small vocabulary over one implementation
 
 Expose five families: **inspect**, **explain**, **evaluate**, **plan**, and **apply**. CLI first, private API where needed, thin MCP later. All adapters invoke the same typed handlers, permission checks, and [result contract](CONTRACTS.md#c7-evidence-and-interfaces).
