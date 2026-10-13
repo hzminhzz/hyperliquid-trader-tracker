@@ -1,5 +1,7 @@
 # Forward-qualified expert signal engine: V2 implementation/research plan
 
+**Operational update (2026-10-13):** Approved DI0–DI7 work now has a bounded deployed production **descriptive** infrastructure slice (prospective shadow journal, hypothetical market controls, agent inspection and separately scheduled descriptive Telegram digest). Its status is `PRODUCTION_DESCRIPTIVE_ONLY`, **not** DI0–DI7 terminal qualification. Unresolved hard gates: host-wide OOM/swap continuity, independent cluster and wallet skill effectiveness, qualified executable prices/funding/slippage, untouched forward predictive lift, richer order/episode coverage, and separate authorization for trade-entry policy/financial execution. These cannot be manufactured from one day's retrospective study or replaced by unit tests. See [production activation](docs/evidence/DI-production-activation-2026-10-13.md).
+
 **Status:** V2 plan with a proposed execution/research amendment, 2026-10-06. Historical slice plans and evidence remain below; their completion must be read from the evidence index, not inferred from this plan. No implementation, issue creation, deployment or predictive promotion is authorized by this documentation review.
 
 ## DI0–DI7 implementation evidence update, 2026-10-13
