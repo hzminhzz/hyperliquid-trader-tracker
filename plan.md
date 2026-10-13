@@ -1,6 +1,88 @@
 # Forward-qualified expert signal engine: V2 implementation/research plan
 
-**Status:** implementation-ready architecture/research plan, 2026-10-06. V1 is complete and remains the descriptive/advisory baseline. This plan does not itself implement V2.
+**Operational update (2026-10-13):** Approved DI0–DI7 work now has a bounded deployed production **descriptive** infrastructure slice (prospective shadow journal, hypothetical market controls, agent inspection and separately scheduled descriptive Telegram digest). Its status is `PRODUCTION_DESCRIPTIVE_ONLY`, **not** DI0–DI7 terminal qualification. Unresolved hard gates: host-wide OOM/swap continuity, independent cluster and wallet skill effectiveness, qualified executable prices/funding/slippage, untouched forward predictive lift, richer order/episode coverage, and separate authorization for trade-entry policy/financial execution. These cannot be manufactured from one day's retrospective study or replaced by unit tests. See [production activation](docs/evidence/DI-production-activation-2026-10-13.md).
+
+**Status:** V2 plan with a proposed execution/research amendment, 2026-10-06. Historical slice plans and evidence remain below; their completion must be read from the evidence index, not inferred from this plan. No implementation, issue creation, deployment or predictive promotion is authorized by this documentation review.
+
+## Event-driven production research migration, 2026-10-13
+
+User-approved cutover is complete: Rust source facts feed the live event-driven opportunity journal, paired outcomes are evaluated against a new lightweight, timestamp-preserving reference-price store, and the old minute×instrument×six-horizon research writer is **disabled**. Legacy consensus/forward outcomes and raw-fill markout databases remain as unmodified archives; the old independent raw-fill outcome service is **disabled**. The original descriptive Telegram consensus remains active but is **not** a new predictive policy. Post-cutover proof: 885,037 historical minute cuts and 5,075,083 historical forward outcomes stayed constant, while the new market price DB advanced past 185,271 rows. Host memory/swap and independent forward alpha qualification gates remain open. See [deployment evidence](docs/evidence/DI-event-driven-migration-2026-10-13.md).
+
+## DI0–DI7 implementation evidence update, 2026-10-13
+
+The cross-repository **shadow foundation** now exists in Python with 166 passing tests, CLI integration, full bounded retrospective ledger replay (232,509 source rows; 31,561 wallet-level opportunity records), hypothetical cost-aware markouts, a frozen simple momentum comparator, dependence-reducing exploratory summaries, and verified immutable gzip research export. This is **not completion of the entire DI0–DI7 terminal predicate**: DI0 host OOM remediation and loss recovery are not qualified; DI1/DI2 isolated **shadow** source-ledger capture is now deployed and recording, but native/cluster independent opportunity linkage and main ensemble integration remain blocked; DI3 actual executable prices are missing; DI4 no independent/untouched forward holdout; DI5 lagged expert specialization remains research-only; DI6 CLI and independent shadow timers are deployed, but the Telegram copy-capsule adapter is not; DI7 native Parquet/sparse production cut writer is not integrated. Preserve these BLOCKED states and the earlier ER0–ER6 evidence. See [execution capsule](docs/evidence/DI0-DI7-shadow-foundation-2026-10-13.md).
+
+## New prioritized frontier: DI0–DI7 copy-opportunity intelligence (2026-10-13)
+
+**Status:** design and dependency plan only; no implementation, GitHub issue creation, live deployment, predictive promotion or financial execution authorized. The previous ER0–ER6 program and V20–V31 slices below remain historical evidence; do not rerun completed engineering or declare their empirical gates passed. Reconcile existing tracker open ER0–ER6 issues individually before materializing any new issues. The new design authority is [DECISION-INTELLIGENCE](docs/DECISION-INTELLIGENCE.md).
+
+**Terminal objective:** a causally first-actionable, reproducible copy opportunity with explicit no-copy semantics, paired market-only controls, cost/latency-aware prospective outcomes and an agent inspection interface; scientific failure is a legitimate terminal result.
+
+**Strict sequence:** stabilize and preserve source evidence -> integrate semantic interpretation into existing Python boundaries -> freeze real follower opportunities -> evaluate matched alpha and controls -> measure independent specialization -> promote only if supported. One new abstraction must erase a real source of ambiguity or redundant work; do not add separate services for conceptual modules.
+
+| Slice | Depends on | Scope, outputs and independently testable exit | Authority |
+|---|---|---|---|
+| **DI0: production integrity capsule** | None | Inspect actual memory cgroup/OOM failure, replay/backlog and 21h18m research gap; map source/event/decision/price coverage and recovery. Add bounded P0 source/P1 interpretation/P2 research resource budgets with alerting, bounded IO and no silent dropped events. Restart/recovery tests and memory profile. Don't infer gap cause without evidence. | Read-only diagnostics first; ops change requires distinct authorization. |
+| **DI1: semantic trade interpretation** | DI0 source audit, ER1/ER2 code | Use the already implemented signed path + optional segment logic via a narrow live/replay adapter. Preserve source action, before/after exposure, event/known clocks, explicit REDUCE-LONG / CLOSE-SHORT / FLIP distinctions, forced vs unknown, source/cluster support. It must not relabel `sign(delta)` raw-flow outcome as fresh opposite entry. Golden fixtures: partial fills, rebalance, round-trip, TWAP, mixed market maker, snapshots and gap. | Python interpretation; Rust retains source truth. |
+| **DI2: CopyOpportunity journal and capsule** | DI1 | Deterministic first-eligible policy, immutable opportunity IDs, same-side updates, expiry/invalidation, earliest follower-known/actionable time, suppressed/unknown reasons, source/feature/policy revisions and no label leakage. Replay identity and dedup tests. Do not emit one candidate for each child fill, minute or notification. | Python shadow research only. |
+| **DI3: prospective markouts and controls** | DI2, price-source audit | Separate wallet/flow markout, follower latency-cost PnL approximation and incremental paired alpha; seal as-known prices, no unsupported price mapping, explicit missing/spread/funding/slippage status. Frozen 5m/15m/1h/4h; preregister primary study horizon; later 24h exploratory. Matched same-coin market/momentum controls and negative eligible windows. Source failures and censored outcomes never backfill wins. | No claimed executable PnL absent qualified execution prices. |
+| **DI4: first bounded alpha experiment** | DI3 and DI0 stable coverage | Test independent fresh accumulation vs momentum/news controls, and skilled de-risking as *exit warning*, not automatic reverse entry. Predeclared policy/time horizons, PIT roster/clusters, overlap grouping, purged time split, dependence-aware intervals, effect threshold and trial budget. Report all positive and null experiments. Promote nothing automatically. | Scientific PASS/REJECT/INCONCLUSIVE. |
+| **DI5: lagged wallet specialization and breadth** | DI4 informative or independently justified | Estimate out-of-period copyable incremental returns by wallet/coin/action/horizon; hierarchical shrinkage, drift and effective clusters; classify insufficient support as UNKNOWN. Test leader/follower later against common market events and clones. Require leave-wallet/cluster-out and chronological sensitivity. | Descriptive or research until holdout qualified. |
+| **DI6: agent facade and Telegram decision adapter** | DI2 + DI3 for evidence; can scaffold independently | Under existing typed inspect/explain/evaluate/plan/apply facade, add capability-checked system brief, change-since-cursor, opportunity explanation, wallet fingerprint, evaluation manifest and bounded next-best experiment. Telegram renders the *same* opportunity capsule, explicit blockers/expiry, descriptive versus predictive authority. Agent cannot silently change policy or place orders. | Explicit human-reviewed policy/action scope. |
+| **DI7: sparse storage and independent forward gate** | DI3+, DI0 profile | Stop excessive per-minute × instrument × six-horizon output where not needed; keep a reconstructable common-time evaluation comparator; sealed/hashed Parquet research partitions and small indexed hot catalog, bounded backpressure, safe retention with independent backups. Benchmark CPU, RAM, API and bytes per independent decision. Evaluate DI4/DI5 in genuinely new untouched prospective data before approving advisory policy. | Deletion and deployment require separate scope/approval. |
+
+### Dependency and safety gates
+
+```text
+DI0 source/coverage integrity
+  |
+  v
+DI1 source-transition meaning
+  |
+  v
+DI2 immutable as-known copy opportunity
+  +-------------------+
+  |                   |
+  v                   v
+DI3 matched outcomes  DI6 bounded explain/Telegram
+  |
+  v
+DI4 pre-registered alpha ablations
+  |
+  +-------> DI5 lagged specialization/independence
+  |
+  +-------> DI7 research storage and new forward holdout
+                        |
+                        v
+                 reviewed advisory gate
+```
+
+**Minimum high-ROI deliverable:** DI0–DI4 using data already gathered, without expanding the watched wallet count, adding an LLM to the hot path, imposing missing futures/tick data as a universal blocker, or requiring native OID data. Source-specific rich-order arms may be BLOCKED while exact observed quantity path and shadow copy opportunities still proceed. DI6 can start in parallel once identity and evidence interfaces are fixed.
+
+**Acceptance and reporting:** Every slice must reference exact repository/runtime revisions, a bounded artifact manifest, deterministic replay fixture, status IMPLEMENTED/QUALIFIED/BLOCKED/REJECTED, uncertainty and next allowable action. Do not mistake a schema test for profitable copying, a one-coin rally for wallet alpha, or a restarted process for gap-free historical coverage. Keep read-only first; do not start trading.
+
+
+## Historical planned frontier: execution correctness before richer scoring
+
+Read [EXECUTION-REVIEW](docs/EXECUTION-REVIEW.md) for the inspected findings, proposed state machines and registered experiment design. Current inspected heads are tracker `2f948f8` and engine `ef8d7c1`; the engine's 79 passing tests do not establish live V2 integration or predictive value. [STATUS](docs/STATUS.md) owns the current claim boundary.
+
+Execution status on the milestone branch: ER0-ER6 implementation/protocol slices are complete. ER0/ER2/ER3 empirical live-source sub-gates remain BLOCKED by absent recorded traffic; ER4 has no prospective outcome-mature rows; ER5 has no independent untouched Stage-2 holdout; ER6 therefore keeps predictive emission disabled. See `docs/evidence/execution-review/`. New data may advance the evidence gates later without rewriting these completed implementation slices.
+
+The following are the materialized execution work packages; their acceptance evidence, not this table, determines completion:
+
+| Package | Depends on | Deliverable and acceptance |
+|---|---|---|
+| ER0: qualify source and state authority | None | Pin source field/coverage/rate capabilities; fault-inject receipt and transition failures, duplicate/restart/counterparty boundaries and snapshot races. Rust owns scoped position/equity/reconciliation authority. Demonstrate one real receipt-to-projection path. No new live-trading authority. |
+| ER1: additive path evidence | ER0 | Preserve exact quantity transitions, net/gross flow, true/unknown ages, event-versus-knowledge time and normalization provenance. Split invariance, round-trip cancellation, stale-equity missingness and old-backfill non-freshness must pass. |
+| ER2: optional execution annotations | ER1 | Explicit native parent links plus conservative causal segments; no requirement that a detector succeeds before state/flow exist. Qualify false merges/splits and delay without outcome-based tuning. Iceberg labels remain unavailable without the necessary source. |
+| ER3: coherent cuts and bounded contributions | ER1; annotations optional | One-minute common cuts; deterministic expiry; coalesced material interrupts; raw descriptive flow plus bounded influence; supported per-instrument breadth and unknown redundancy. Clone, leader/follower, stale-cut and simultaneous-market-event fixtures pass. |
+| ER4: representation experiment | ER1 and ER3; ER2 only for the annotation arm | Preregister state-only, additive path, and path-plus-annotation comparisons at identical cuts; market-only comparator, prospective approximately 50/120 wallet cuts, signed-cost and outcome-availability checks, dependence-aware intervals. Retain INCONCLUSIVE/REJECTED outcomes. |
+| ER5: cadence and universe experiment | ER4 | Freeze the simplest supported representation and use a new untouched evaluation interval for 60s, 300s, hybrid interrupts and exposure-event clocks. Evaluate common market-time rows plus actual-action replay; report latency, costs, missingness and marginal universe value. |
+| ER6: reconsider predictive qualification | ER4/ER5 evidence | Continue V29-V31 only when their economic and operational predicates are actually satisfied. Do not equate a descriptive engine or passing synthetic tests with qualification. |
+
+Approximately 120 observed wallets is a research budget, not a required voter count. The original approximately 50 remain a comparator. Do not force clustering to yield 50-70 groups, and do not expand to 200 without measurable novelty/coverage or incremental value. One-minute and segmentation thresholds are test parameters, not proven optima. No fill is dropped by a materiality gate.
+
+The previous V20-V31 issue materialization section is retained for traceability. Before any implementation, reconcile these packages with actual open issues and current code; do not blindly recreate or close historical issues.
 
 ## Goal and terminal predicate
 
@@ -19,7 +101,7 @@ If no candidate demonstrates forward predictive value, V2 research may terminate
 
 Authorities: [SYSTEM](docs/SYSTEM.md), [CONTEXT](CONTEXT.md), [CONTRACTS](docs/CONTRACTS.md), [RESEARCH](docs/RESEARCH.md), [QUALIFICATION](docs/QUALIFICATION.md), [OPERATIONS](docs/OPERATIONS.md).
 
-## Verified starting point
+## Historical V2 starting point
 
 - Tracker repository main: `9b55228`.
 - Expert-engine repository main inspected at `bf88f7a`.

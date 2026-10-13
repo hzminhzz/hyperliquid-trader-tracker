@@ -58,6 +58,26 @@
 
 **Crowding risk**: evidence that positioning or market structure may make the same-direction trade fragile, congested, or liquidation-sensitive. Crowding risk is separate from signal strength.
 
+## Copy decisions and learning
+
+**Source transition**: a supported signed change in an account position; trade-sign markout is not automatically a follower entry recommendation. A REDUCE of an existing long is not a fresh short, and closing a short is not a fresh long.
+
+**Execution segment**: an optional annotation grouping observed economically related fills. Native program references are evidence if supplied by the venue; time-inferred segmentation is uncertain and does not prove intent.
+
+**Copy opportunity**: the first causally knowable, versioned follower decision created by a defined observation and eligibility rule, with a stable identity, direction or abstention, and expiry. Repeated fills, minute cuts and notifications can update one opportunity without becoming additional independent trade opportunities.
+
+**Decision cut**: the exact accepted source state, market data, feature revisions and knowledge watermark that could inform one decision. Later restatements never rewrite the original decision cut.
+
+**Earliest actionable time**: first time an eligible follower could have received the evidence and acted under an explicit delivery/latency assumption. It differs from the source event and source wallet execution times.
+
+**Follower markout**: prospective price movement measured from first actionable time; diagnostic mid-price markout is not executable trade PnL.
+
+**Incremental predictive value**: an outcome advantage over cost-adjusted contemporaneous same-asset and market-only controls after correcting for dependent observations and selection; it is separate from source-wallet PnL and absolute directional accuracy.
+
+**Decision capsule**: a stable reference to one copy opportunity and its immutable as-known inputs, revisions, source actions, support, actionability, invalidation rules, outcome maturity and blocking reasons.
+
+**Scientific abstention**: explicit evidence-based refusal to interpret a position or produce a trade recommendation when source coverage, incremental skill, executable prices or validation is insufficient; distinct from silence caused by a technical outage.
+
 ## Predictive signal and advice
 
 **Predictive evidence**: a versioned set of descriptive features plus point-in-time historical outcome evidence that has passed the declared research gates for use by a signal policy.

@@ -12,11 +12,13 @@ use std::sync::{Arc, Mutex};
 use chrono::{TimeZone, Utc};
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
+use tempfile::tempdir;
 
 use tracker::book::{InMemoryBook, ReconcileOutcome, SeenTids};
 use tracker::config::Settings;
 use tracker::enrich::Enricher;
 use tracker::hl_client::InfoClient;
+use tracker::ledger::{LedgerCursor, ObservationLedger};
 use tracker::models::{CoverageState, parse_account_equity};
 use tracker::registry::Registry;
 use tracker::resolve::{resolve_deltas, seed_state_from_row};
@@ -59,6 +61,19 @@ fn test_q02_scoped_trade_key_no_cross_instrument_collision() {
     assert!(
         seen.check_and_add_scoped("BTC", shared_tid),
         "duplicate trade on BTC must be rejected"
+    );
+}
+
+#[test]
+fn test_q02_same_coin_tid_in_different_source_times_are_distinct() {
+    let mut seen = SeenTids::new(100);
+    let tid = 42_4242;
+
+    assert!(!seen.check_and_add_scoped_at("BTC", tid, 1_791_288_000_000));
+    assert!(seen.check_and_add_scoped_at("BTC", tid, 1_791_288_000_000));
+    assert!(
+        !seen.check_and_add_scoped_at("BTC", tid, 1_791_288_001_000),
+        "the documented economic identity includes source/block time"
     );
 }
 
@@ -326,6 +341,76 @@ fn test_q04_seeded_position_next_fill_is_add_not_open() {
     );
     let p = book.position(addr, "BTC").unwrap();
     assert_eq!(p.szi, d("4.0"));
+}
+
+#[tokio::test]
+async fn test_q04_seed_snapshot_is_durable_and_publishes_equity_from_rust() {
+    let book = Arc::new(Mutex::new(InMemoryBook::new()));
+    let addr = "0x5656565656565656565656565656565656565656";
+    let client: Arc<dyn InfoClient> = Arc::new(MockClient {
+        response: json!({
+            "marginSummary": {
+                "accountValue": "25000",
+                "totalRawUsd": "24000",
+                "totalMarginUsed": "1000"
+            },
+            "assetPositions": [{
+                "position": {
+                    "coin": "BTC",
+                    "szi": "2.0",
+                    "entryPx": "60000",
+                    "leverage": {"type": "cross", "value": 3}
+                }
+            }]
+        }),
+    });
+    let dir = tempdir().expect("tempdir");
+    let mut ledger = ObservationLedger::new(dir.path().join("observation.db"));
+    ledger.connect().await.expect("ledger connect");
+    let ledger = Arc::new(ledger);
+    let enricher = Enricher::new(Settings::default(), Arc::clone(&book), client)
+        .with_ledger(Arc::clone(&ledger));
+
+    assert_eq!(enricher.seed_wallet(addr).await, ReconcileOutcome::Applied);
+    {
+        let stored = book.lock().expect("book mutex poisoned");
+        assert_eq!(
+            stored.position(addr, "BTC").expect("position").szi,
+            d("2.0")
+        );
+        assert_eq!(
+            stored.equity(addr).expect("equity").account_value,
+            d("25000")
+        );
+    }
+
+    let tail = ledger
+        .tail(
+            &LedgerCursor {
+                ledger_id: ledger.ledger_id().to_string(),
+                seq: 0,
+            },
+            10,
+        )
+        .await
+        .expect("tail");
+    assert_eq!(tail.events.len(), 1);
+    assert_eq!(tail.events[0].kind, "ACCOUNT_SNAPSHOT");
+    assert_eq!(tail.events[0].payload["equity"]["account_value"], "25000");
+    assert_eq!(tail.events[0].payload["positions"][0]["coin"], "BTC");
+    assert_eq!(
+        tail.events[0].payload["positions"][0]["opened_at_known"],
+        false
+    );
+    assert_eq!(
+        ledger
+            .snapshot_page(0, 10)
+            .await
+            .expect("snapshot")
+            .positions
+            .len(),
+        1
+    );
 }
 
 #[test]
