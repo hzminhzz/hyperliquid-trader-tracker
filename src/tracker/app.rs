@@ -331,10 +331,17 @@ async fn amain(settings: Settings) -> Result<()> {
         sender = Arc::new(LoggingSender::default());
     }
 
-    let notifier = Notifier::new(sender, settings.notify_reduce_close);
+    let notifier = Notifier::new(sender, settings.notify_reduce_close)
+        .with_trade_notifications(settings.notify_trade_events);
+    if !settings.notify_trade_events {
+        tracing::info!("routine per-trade notifications disabled; durable tracking unchanged");
+    }
     // No resolver when close notifications are muted — the lookup's only consumer is the
     // close message, so fetching would just spend REST budget on a dropped event.
-    let pnl_resolver = if settings.closed_pnl_lookup && settings.notify_reduce_close {
+    let pnl_resolver = if settings.closed_pnl_lookup
+        && settings.notify_reduce_close
+        && settings.notify_trade_events
+    {
         Some(ClosedPnlResolver::new(&settings, Arc::clone(&client)))
     } else {
         None

@@ -132,6 +132,8 @@ pub struct Settings {
     /// Full lifecycle by default: open/add/reduce/close/flip all push. Set False to mute the
     /// exit side (reduce/close) and notify only new positions + increases.
     pub notify_reduce_close: bool,
+    /// Suppress all routine per-trade Telegram cards without affecting observation capture.
+    pub notify_trade_events: bool,
 
     // --- Authoritative close PnL (userFillsByTime lookup on close/flip) ---
     /// On a close, fetch the leg's fills once via REST and report the exchange's own summed
@@ -189,6 +191,7 @@ impl Default for Settings {
             reconcile_interval_s: 45.0,
             reconcile_batch: 20,
             notify_reduce_close: true,
+            notify_trade_events: true,
             closed_pnl_lookup: true,
             closed_pnl_attempts: 3,
             closed_pnl_retry_delay_s: 1.0,
@@ -256,6 +259,9 @@ impl Settings {
         }
         if let Some(v) = get_env("TRACKER_NOTIFY_REDUCE_CLOSE") {
             s.notify_reduce_close = parse_bool("TRACKER_NOTIFY_REDUCE_CLOSE", &v)?;
+        }
+        if let Some(v) = get_env("TRACKER_NOTIFY_TRADE_EVENTS") {
+            s.notify_trade_events = parse_bool("TRACKER_NOTIFY_TRADE_EVENTS", &v)?;
         }
         if let Some(v) = get_env("TRACKER_CLOSED_PNL_LOOKUP") {
             s.closed_pnl_lookup = parse_bool("TRACKER_CLOSED_PNL_LOOKUP", &v)?;
