@@ -271,6 +271,62 @@ impl ObservationLedger {
             .await
     }
 
+    /// Persist a feed coverage boundary without pretending missing WebSocket trades
+    /// have been recovered. This is observation health, never an economic fill.
+    pub async fn record_feed_coverage(&self, status: &str) -> Result<u64, tokio_rusqlite::Error> {
+        let status = status.to_string();
+        let ledger_id = self.ledger_id.clone();
+        let when = Utc::now().to_rfc3339();
+        let payload = serde_json::json!({
+            "feed": "hyperliquid:mainnet:trades",
+            "status": status,
+            "history_during_gap": "UNVERIFIED"
+        })
+        .to_string();
+        self.conn()
+            .call(move |conn| {
+                let tx = conn.transaction()?;
+                let receipt_key = format!("{status}:{when}:{}", rand::random::<u64>());
+                tx.execute(
+                    "INSERT INTO receipts (source,source_key,payload,received_at,status)
+                     VALUES ('ws:coverage',?1,?2,?3,'COMMITTED')",
+                    rusqlite::params![receipt_key, payload, when],
+                )?;
+                let receipt_id = tx.last_insert_rowid();
+                tx.execute(
+                    "UPDATE ledger_meta SET current_seq=current_seq+1 WHERE ledger_id=?1",
+                    rusqlite::params![ledger_id],
+                )?;
+                let seq: u64 = tx.query_row(
+                    "SELECT current_seq FROM ledger_meta WHERE ledger_id=?1",
+                    rusqlite::params![ledger_id],
+                    |row| row.get(0),
+                )?;
+                tx.execute(
+                    "INSERT INTO outbox_events(
+                     seq,event_id,schema_version,ledger_id,kind,environment,
+                     instrument_id,wallet_id,event_time,received_at,known_at,
+                     cause_receipt_id,before_revision,after_revision,payload,quality
+                     ) VALUES (?1,?2,'1',?3,'COVERAGE_CHANGE','mainnet',?4,'',
+                     ?5,?6,?7,?8,0,0,?9,'degraded')",
+                    rusqlite::params![
+                        seq as i64,
+                        format!("{ledger_id}:{seq}"),
+                        ledger_id,
+                        "hyperliquid:mainnet:feed:trades",
+                        when,
+                        when,
+                        when,
+                        receipt_id,
+                        payload,
+                    ],
+                )?;
+                tx.commit()?;
+                Ok(seq)
+            })
+            .await
+    }
+
     /// Return whether an accepted receipt has already been fully committed.
     /// A duplicate PENDING receipt is resumable after a crash; a COMMITTED one is a true replay.
     pub async fn receipt_is_committed(

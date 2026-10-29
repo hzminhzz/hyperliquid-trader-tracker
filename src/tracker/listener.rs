@@ -35,7 +35,7 @@ use crate::book::{InMemoryBook, SeenTids};
 use crate::config::Settings;
 use crate::hl_client::InfoClient;
 use crate::ledger::{ObservationLedger, PositionCheckpoint, TransitionParams};
-use crate::models::CompletedTrade;
+use crate::models::{CompletedTrade, CoverageState};
 use crate::notifier::{EventContext, Notifier};
 use crate::pnl::{ClosedPnlResolver, with_authoritative_pnl};
 use crate::registry::Registry;
@@ -100,6 +100,7 @@ pub struct Listener {
     dispatch_rx: Arc<tokio::sync::Mutex<Option<mpsc::Receiver<DispatchedEvent>>>>,
     ledger: Option<Arc<ObservationLedger>>,
     state_gate: Arc<AsyncMutex<()>>,
+    feed_gap_open: bool,
 }
 
 impl Listener {
@@ -136,6 +137,7 @@ impl Listener {
             dispatch_rx: Arc::new(tokio::sync::Mutex::new(Some(rx))),
             ledger: None,
             state_gate: Arc::new(AsyncMutex::new(())),
+            feed_gap_open: true,
         }
     }
 
@@ -199,6 +201,12 @@ impl Listener {
                 }
             });
         }
+        if let Some(ledger) = &self.ledger
+            && let Err(err) = ledger.record_feed_coverage("STARTUP_GAP_UNVERIFIED").await
+        {
+            tracing::error!("cannot persist startup feed gap: {err}");
+            return;
+        }
         self.connection_loop().await;
     }
 
@@ -212,6 +220,25 @@ impl Listener {
             match self.run_connection().await {
                 Ok(()) => backoff = 1.0,
                 Err(err) => {
+                    if !self.feed_gap_open {
+                        if let Some(ledger) = &self.ledger
+                            && let Err(write_err) = ledger
+                                .record_feed_coverage("DISCONNECTED_GAP_UNVERIFIED")
+                                .await
+                        {
+                            tracing::error!("cannot persist feed gap: {write_err}");
+                            return;
+                        }
+                        // A reconnect cannot prove that no fills were missed.
+                        // Only a new validated wallet snapshot can restore coverage.
+                        let _gate = self.state_gate.lock().await;
+                        let watched = self.registry.lock().expect("registry poisoned").addresses();
+                        let mut book = self.book.lock().expect("book poisoned");
+                        for wallet in watched.iter() {
+                            book.set_coverage_state(wallet, CoverageState::Degraded);
+                        }
+                        self.feed_gap_open = true;
+                    }
                     // PORT NOTE: Python joined `eg.exceptions` with "; " — a TaskGroup can
                     // carry BOTH loops' failures; tokio::try_join! yields only the FIRST
                     // error (the sibling is cancelled by drop), so a single Display stands
@@ -261,6 +288,12 @@ impl Listener {
         // returning on stop) is worth mirroring — the server treats both as a disconnect.
         let (mut sink, stream) = ws.split();
         self.subscribe(&mut sink, &coins).await?;
+        if let Some(ledger) = &self.ledger {
+            ledger
+                .record_feed_coverage("SUBSCRIBED_HISTORY_UNVERIFIED")
+                .await?;
+        }
+        self.feed_gap_open = false;
         tracing::info!(
             "listener subscribed to {} coin trade feeds + allMids",
             coins.len()
@@ -527,6 +560,7 @@ impl Listener {
                             "delta": fill.delta.to_string(),
                             "quantity_after": quantity_after.to_string(),
                             "avg_entry": avg_entry.map(|v| v.to_string()),
+                            "coverage": format!("{coverage:?}"),
                             "px": fill.px.to_string()
                         }),
                     });

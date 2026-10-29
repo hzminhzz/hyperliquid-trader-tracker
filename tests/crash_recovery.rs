@@ -46,6 +46,47 @@ fn test_transition(
     }
 }
 
+#[tokio::test]
+async fn feed_gap_markers_are_durable_and_do_not_fabricate_trades() {
+    let dir = tempdir().expect("tempdir");
+    let mut ledger = ObservationLedger::new(dir.path().join("ledger.db"));
+    ledger.connect().await.expect("connect");
+    assert_eq!(
+        ledger
+            .record_feed_coverage("STARTUP_GAP_UNVERIFIED")
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        ledger
+            .record_feed_coverage("SUBSCRIBED_HISTORY_UNVERIFIED")
+            .await
+            .unwrap(),
+        2
+    );
+    let events = ledger
+        .tail(
+            &LedgerCursor {
+                ledger_id: ledger.ledger_id().to_string(),
+                seq: 0,
+            },
+            10,
+        )
+        .await
+        .expect("tail")
+        .events;
+    assert_eq!(events.len(), 2);
+    assert!(events.iter().all(|event| event.kind == "COVERAGE_CHANGE"));
+    assert!(
+        events
+            .iter()
+            .all(|event| event.payload["history_during_gap"] == "UNVERIFIED")
+    );
+    assert_eq!(events[0].payload["status"], "STARTUP_GAP_UNVERIFIED");
+    assert_eq!(events[1].payload["status"], "SUBSCRIBED_HISTORY_UNVERIFIED");
+}
+
 // --- Q05: Crash consistency & transaction boundaries -----------------------
 
 #[tokio::test]
