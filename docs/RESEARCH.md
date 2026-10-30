@@ -1,6 +1,16 @@
 # Ensemble semantics and V2 signal research
 
-**Status:** authoritative research and signal-engine specification. V1 consensus remains the live descriptive baseline. Nothing in this document promotes a predictive model by prose alone.
+**Status:** authoritative research and signal-engine specification. The inspected runtime still uses the V1 descriptive baseline; this is not a live-health assertion. Nothing in this document promotes a predictive model by prose alone.
+
+**Proposed execution amendment (2026-10-06):** [EXECUTION-REVIEW](EXECUTION-REVIEW.md) records the current audit and proposed next experiment. Its sections 5-8 refine flow, materiality, segmentation and clocks; sections 9-10 define new acceptance and evaluation cases. The existing R2.4 known-time-only flow formula below is the prior V2 proposal, not the recommended next-stage default: execution recency must use event time while visibility uses knowledge time. Older backfill cannot become fresh intent merely on arrival. Common-anchor net/gross quantity flow, explicit missing normalization, optional uncertain episode annotations and bounded flow influence are the proposed replacements. Current code must not be represented as implementing those replacements.
+
+For the proposed experiment, keep costs outside the directional sign transform; bound outcome-price lateness and track price availability; evaluate all clocks on common market-time rows with dependence-aware uncertainty. Selecting a representation in Stage 1 consumes that holdout: Stage 2 must use a new untouched evaluation interval or an independently frozen protocol. Predictive promotion remains blocked until the corresponding evidence exists.
+
+## Decision-opportunity and research-economics amendment, 2026-10-13
+
+[DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md) supplements the R0-R2 representation/cadence protocol with a causally first-actionable copy-opportunity unit. Source-wallet success, `sign(delta)` execution-flow markout, hypothetical mid-to-mid signal return and latency/cost-adjusted follower return are different research targets and must never share an ambiguous `net_pnl` label. A long reduction is a REDUCE-LONG observation, not a SELL-SHORT trading instruction. Only a qualified new position or predeclared independent contrarian hypothesis may emit an opposing entry candidate.
+
+Preregister first the minimum testable pair: (1) fresh independent accumulation against matched market-only controls; (2) de-risking warnings against ordinary profit-taking controls. Freeze actionability/quote latency, one primary horizon, entry/expiry, common risk/cost convention, conditional universe, negative eligible periods, independent episode grouping and scientific stopping budget before looking at labels. Preserve R0/R1/R2 and V1 as comparators. Evaluate incremental lift over same-coin momentum/volatility/time controls with purged chronological splits and time/cluster block uncertainty. Do not count 1m repeated snapshots, child fills, matched horizons or repeated Telegram sends as independent observations. Record market-only explanations and null findings as durable results. Complex skill/leader-follower learning and sizing remain blocked until matched baselines and genuinely new holdout data exist.
 
 ## R1. Separate observation, description, prediction, and action
 

@@ -2,6 +2,20 @@
 
 **Status:** normative target; implementation belongs to [plan.md](../plan.md). Terms are in [CONTEXT](../CONTEXT.md). This is the single authority for cross-module data semantics.
 
+## Proposed execution-contract amendment, 2026-10-06
+
+[EXECUTION-REVIEW](EXECUTION-REVIEW.md) identifies live call-site gaps against C1-C2; passing ledger-unit tests does not discharge those gaps. Before richer scoring, qualify receipt/commit failures and the snapshot/stream cut with both watched counterparties preserved. Python must not silently replace the authoritative account view through an independent snapshot path.
+
+The proposed evidence extension preserves additive quantity deltas and full instrument identity, with optional observed order/native-parent links and versioned inferred segments. Missing metadata remains unknown. Segment classification never controls whether an economic fill is retained or whether raw state/flow can be produced. Virtual flip legs are disjoint allocations of the real fill, not additional executed quantity.
+
+Every derived flow cut names event-time bounds, knowledge visibility, coverage, normalization anchors and window expiry. Unavailable normalized events remain missing, not known-zero. Late backfill or enrichment can produce a new current revision but cannot rewrite prior as-known outputs. Common-cut ensemble contributions replace prior contributions; they do not append votes for each child order. These extensions are proposed, not yet implemented or qualified.
+
+## New proposed copy-opportunity contract, 2026-10-13
+
+See [DECISION-INTELLIGENCE D2-D4](DECISION-INTELLIGENCE.md) for the complete normative candidate. Add one immutable `CopyOpportunity` at first knowledge/eligibility time, keyed by instrument, candidate policy, source-evidence cut and opportunity lineage. It must not be generated once per child fill, static snapshot minute or Telegram retry. A same-direction child event updates the original opportunity; a true flip links disjoint close/open legs; an expired or invalidated opportunity cannot silently reopen at its original time. Persist immutable input ledger cursor, event/receipt/knowledge/earliest-actionable times, exact action semantics, independent support, price source, model/policy/universe revision, uncertainties, no-copy reason and baselines; preserve outcome labels in separately appended records only. Later source amendments create restated views rather than overwriting the original as-known decision.
+
+Separate signed *execution-flow markout* (`sign(delta)`), *directional entry outcome* (real supported follower direction) and *exit/de-risking advisory* (no implicit counter-position). Missing executable spread, depth or cost evidence must not be replaced by a falsely precise return. Any extra source adapter must preserve this owner contract. This is a proposal, not an implemented schema.
+
 ## C1. Identity, time, and units
 
 All products carry `schema_version`, `producer_revision`, `environment`, a stable ID, and provenance references. IDs are opaque and globally scoped; they must not be inferred from display labels.

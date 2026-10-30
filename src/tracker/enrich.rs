@@ -10,18 +10,21 @@
 // PORT NOTE: `logger = logging.getLogger(__name__)` disappears — tracing macros are
 // free-standing and carry the module path automatically (same as hl_client.rs).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
 use serde_json::{Value, json};
-use tokio::sync::Semaphore;
+use tokio::sync::{Mutex as AsyncMutex, Semaphore};
 
 use crate::book::{InMemoryBook, ReconcileOutcome};
 use crate::config::Settings;
 use crate::exceptions::TrackerError;
 use crate::hl_client::InfoClient;
-use crate::models::{self, AccountPosition, CoverageState, build_position, parse_account_equity};
+use crate::ledger::{ObservationLedger, PositionCheckpoint, WalletSnapshotParams};
+use crate::models::{
+    self, AccountEquity, AccountPosition, CoverageState, build_position, parse_account_equity,
+};
 use crate::resolve::seed_state_from_row;
 use crate::scheduler::RequestScheduler;
 use crate::state::PositionState;
@@ -56,6 +59,8 @@ pub struct Enricher {
     book: Arc<Mutex<InMemoryBook>>,
     client: Arc<dyn InfoClient>,
     scheduler: RequestScheduler,
+    state_gate: Arc<AsyncMutex<()>>,
+    ledger: Option<Arc<ObservationLedger>>,
 }
 
 /// Summary of outcomes from batch seeding/reconciling.
@@ -77,6 +82,8 @@ impl Enricher {
             book,
             client,
             scheduler: RequestScheduler::default(),
+            state_gate: Arc::new(AsyncMutex::new(())),
+            ledger: None,
         }
     }
 
@@ -91,11 +98,23 @@ impl Enricher {
             book,
             client,
             scheduler,
+            state_gate: Arc::new(AsyncMutex::new(())),
+            ledger: None,
         }
     }
 
     pub fn scheduler(&self) -> &RequestScheduler {
         &self.scheduler
+    }
+
+    pub fn with_state_gate(mut self, state_gate: Arc<AsyncMutex<()>>) -> Self {
+        self.state_gate = state_gate;
+        self
+    }
+
+    pub fn with_ledger(mut self, ledger: Arc<ObservationLedger>) -> Self {
+        self.ledger = Some(ledger);
+        self
     }
 
     /// Snapshot `address`'s positions and reseed the book. Returns `false` on failure.
@@ -111,13 +130,96 @@ impl Enricher {
             .expect("book mutex poisoned")
             .fill_epoch(address);
         match self.snapshot_positions(address).await {
-            Ok((states, leverage)) => self
-                .book
-                .lock()
-                .expect("book mutex poisoned")
-                .reseed_wallet(address, states, leverage, Some(epoch)),
+            Ok((states, leverage, equity, raw, observed_at)) => {
+                let receipt_id = if let Some(ledger) = &self.ledger {
+                    let source_key = format!(
+                        "{}:{}",
+                        address.to_ascii_lowercase(),
+                        observed_at.timestamp_micros()
+                    );
+                    match ledger
+                        .append_receipt("rest:clearinghouseState", &source_key, &raw, observed_at)
+                        .await
+                    {
+                        Ok((id, _)) => Some(id),
+                        Err(err) => {
+                            tracing::error!(
+                                "seed: durable snapshot receipt failed for {address}: {err}"
+                            );
+                            let _gate = self.state_gate.lock().await;
+                            self.book
+                                .lock()
+                                .expect("book mutex poisoned")
+                                .set_coverage_state(address, CoverageState::Quarantined);
+                            return ReconcileOutcome::Failed;
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                let _gate = self.state_gate.lock().await;
+                let mut staged = self.book.lock().expect("book mutex poisoned").clone();
+                if let Some(eq) = equity.clone() {
+                    staged.set_equity(eq);
+                }
+                let outcome = staged.reseed_wallet(address, states.clone(), leverage, Some(epoch));
+                if outcome != ReconcileOutcome::Applied {
+                    return outcome;
+                }
+
+                if let (Some(ledger), Some(receipt_id)) = (&self.ledger, receipt_id) {
+                    let revision = staged.state_revision(address);
+                    let generation = staged.generation(address);
+                    let coverage = format!("{:?}", staged.coverage_state(address));
+                    let checkpoints = states
+                        .iter()
+                        .map(|state| PositionCheckpoint {
+                            address: state.address.clone(),
+                            coin: state.coin.clone(),
+                            szi: state.szi,
+                            direction: state.direction,
+                            avg_entry: state.avg_entry,
+                            opened_at: state.opened_at,
+                            last_added_at: state.last_added_at,
+                            realized_pnl: state.realized_pnl,
+                            revision,
+                            generation,
+                            coverage: coverage.clone(),
+                            updated_at: observed_at,
+                        })
+                        .collect();
+                    if let Err(err) = ledger
+                        .commit_wallet_snapshot(WalletSnapshotParams {
+                            receipt_id,
+                            wallet_id: address.to_string(),
+                            checkpoints,
+                            equity,
+                            observed_at,
+                            before_rev: epoch,
+                            after_rev: revision,
+                        })
+                        .await
+                    {
+                        tracing::error!(
+                            "seed: durable snapshot commit failed for {address}; state not published: {err}"
+                        );
+                        // Still under state_gate: do not publish the staged snapshot.
+                        // A failed storage write revokes the old coverage claim too.
+                        self.book
+                            .lock()
+                            .expect("book mutex poisoned")
+                            .set_coverage_state(address, CoverageState::Quarantined);
+                        return ReconcileOutcome::Failed;
+                    }
+                }
+
+                *self.book.lock().expect("book mutex poisoned") = staged;
+                ReconcileOutcome::Applied
+            }
             Err(err) => {
                 tracing::error!("seed: clearinghouseState failed for {address}: {err:?}");
+                let _gate = self.state_gate.lock().await;
                 self.book
                     .lock()
                     .expect("book mutex poisoned")
@@ -127,7 +229,7 @@ impl Enricher {
         }
     }
 
-    /// Fetch and parse `address`'s live open positions (non-zero size, malformed rows skipped).
+    /// Fetch and parse `address`'s live open positions (non-zero size, malformed rows rejected).
     ///
     /// The fetch+parse half of the seed path, shared with the bot's `/positions` view — which
     /// is why it returns the full [`AccountPosition`] rows (entry px, value, unrealized PnL,
@@ -170,12 +272,20 @@ impl Enricher {
             // PORT NOTE: build_position's two failure exits (fixed decision): Ok(None) = the
             // Python `pos is None` arm, Err = a numeric field failed decimal coercion (the
             // pydantic ValidationError that aborted the whole seed) — propagated by `?`.
-            let Some(pos) = build_position(address, entry)? else {
-                continue; // skip malformed
-            };
-            // `not pos.szi` — Money truthiness: None and zero are both falsy → skip.
-            if pos.szi.filter(|s| !s.is_zero()).is_none() {
-                continue; // skip zero-size
+            let pos = build_position(address, entry)?.ok_or_else(|| {
+                TrackerError::Parse("clearinghouseState: malformed assetPositions row".to_string())
+            })?;
+            let size = pos.szi.ok_or_else(|| {
+                TrackerError::Parse("clearinghouseState: missing position size".to_string())
+            })?;
+            if size.is_zero() {
+                continue;
+            }
+            if pos.entry_px.is_none() {
+                return Err(TrackerError::Parse(
+                    "clearinghouseState: missing entry price for live position".to_string(),
+                )
+                .into());
             }
             positions.push(pos);
         }
@@ -190,19 +300,25 @@ impl Enricher {
     async fn snapshot_positions(
         &self,
         address: &str,
-    ) -> Result<(Vec<PositionState>, HashMap<String, i64>), SeedError> {
+    ) -> Result<
+        (
+            Vec<PositionState>,
+            HashMap<String, i64>,
+            Option<AccountEquity>,
+            Value,
+            chrono::DateTime<Utc>,
+        ),
+        SeedError,
+    > {
         self.scheduler.acquire(2, false).await;
         let resp = self
             .client
             .info(json!({"type": "clearinghouseState", "user": address}))
             .await?;
         let now = Utc::now();
-        if let Ok(Some(equity)) = parse_account_equity(address, &resp, now) {
-            self.book
-                .lock()
-                .expect("book mutex poisoned")
-                .set_equity(equity);
-        }
+        let equity = Some(parse_account_equity(address, &resp, now)?.ok_or_else(|| {
+            TrackerError::Parse("clearinghouseState: valid account equity required".to_string())
+        })?);
         let entries: &[Value] = match &resp {
             Value::Object(obj) => {
                 let Some(positions_val) = obj.get("assetPositions") else {
@@ -229,17 +345,33 @@ impl Enricher {
         };
         let mut states: Vec<PositionState> = Vec::new();
         let mut leverage: HashMap<String, i64> = HashMap::new();
+        let mut seen_coins = HashSet::new();
         for entry in entries {
-            let Some(pos) = build_position(address, entry)? else {
+            let pos = build_position(address, entry)?.ok_or_else(|| {
+                TrackerError::Parse("clearinghouseState: malformed assetPositions row".to_string())
+            })?;
+            if !seen_coins.insert(pos.coin.clone()) {
+                return Err(TrackerError::Parse(
+                    "clearinghouseState: duplicate instrument in snapshot".to_string(),
+                )
+                .into());
+            }
+            let size = pos.szi.ok_or_else(|| {
+                TrackerError::Parse("clearinghouseState: missing position size".to_string())
+            })?;
+            if size.is_zero() {
                 continue;
-            };
-            if pos.szi.filter(|s| !s.is_zero()).is_none() {
-                continue;
+            }
+            if pos.entry_px.is_none() {
+                return Err(TrackerError::Parse(
+                    "clearinghouseState: missing entry price for live position".to_string(),
+                )
+                .into());
             }
             states.push(seed_state_from_row(
                 address,
                 &pos.coin,
-                pos.szi.expect("guarded non-zero above"),
+                size,
                 pos.entry_px,
                 now,
             ));
@@ -247,7 +379,7 @@ impl Enricher {
                 leverage.insert(pos.coin, value);
             }
         }
-        Ok((states, leverage))
+        Ok((states, leverage, equity, resp, now))
     }
 
     /// Detailed batch seeding returning explicit outcomes.
@@ -367,6 +499,7 @@ mod tests {
     // the JSON leverage value via Value::as_i64).
     fn chs(coin: &str, szi: &str, entry: &str, leverage: i64) -> Value {
         json!({
+            "marginSummary": {"accountValue": "1000"},
             "assetPositions": [
                 {
                     "position": {
@@ -472,6 +605,35 @@ mod tests {
                 .position("0xa", "BTC")
                 .is_none()
         );
+    }
+
+    #[tokio::test]
+    async fn failed_durable_snapshot_write_quarantines_preexisting_wallet_state() {
+        for table in ["receipts", "position_checkpoints"] {
+            let tmp = tempfile::tempdir().unwrap();
+            let path = tmp.path().join("ledger.db");
+            let mut ledger = ObservationLedger::new(&path);
+            ledger.connect().await.unwrap();
+            rusqlite::Connection::open(&path)
+                .unwrap()
+                .execute_batch(&format!("DROP TABLE {table}"))
+                .unwrap();
+
+            let book = Arc::new(Mutex::new(InMemoryBook::new()));
+            book.lock()
+                .unwrap()
+                .ingest("0xa", "ETH", d("2"), d("50"), Utc::now());
+            let client = FakeInfoClient {
+                responses: HashMap::from([("0xa".to_string(), chs("BTC", "1", "90", 10))]),
+                fail: HashSet::new(),
+            };
+            let enricher = enricher(client, Arc::clone(&book)).with_ledger(Arc::new(ledger));
+            assert_eq!(enricher.seed_wallet("0xa").await, ReconcileOutcome::Failed);
+            let state = book.lock().unwrap();
+            assert!(state.position("0xa", "ETH").is_some());
+            assert!(state.position("0xa", "BTC").is_none());
+            assert_eq!(state.coverage_state("0xa"), CoverageState::Quarantined);
+        }
     }
 
     #[tokio::test]

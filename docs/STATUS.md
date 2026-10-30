@@ -1,5 +1,91 @@
 # Inspected status and implementation gaps
 
+## WP2 targeted source-admission and lifecycle hardening — 2026-10-30
+
+**Engineering verification (not source or predictive qualification):** Rust source
+snapshot admission now fails closed for malformed mixed rows, missing quantity,
+missing live-position entry price, duplicate instruments and absent valid equity;
+a legitimate empty positions array remains distinct from malformed state.
+Source receipt/transition write failures abort the WebSocket frame and require
+a durable gap marker before reconnect. Failed snapshot receipt/commit
+quarantines existing wallet state instead of retaining a false trusted tag.
+
+The separate Python research engine versions new shadow opportunity decisions
+as DI2-shadow-v2. An actual CLOSE/FLIP appends invalidation to all still-open
+matching wallet/instrument/direction entries regardless of ADD coalescing age
+and across earlier policy revisions. Frozen first decisions and already
+attached outcomes are not rewritten. Agent explanation and the hourly
+descriptive board project current terminal status from later updates.
+Degraded source markers become explicit knowledge-time barriers, not invented
+trader exits; pre-gap votes are excluded from the board after each barrier.
+
+Verify tests and live deployment from the current repos and user systemd units,
+not from this document. These changes do not prove a lossless REST-snapshot/
+WebSocket join, recovered missed-fill history, independent wallets, executable
+follower prices or qualified predictive alpha. Automatic long-horizon expiry
+and full follow-wallet lifecycle qualification remain separate gates.
+No execution or predictive promotion is authorized.
+
+## Source integrity and coverage hardening verified, 2026-10-29 UTC
+
+Tracker commit `66a642d` and companion engine commits `a0eb5d7` / `945eedc` were tested and activated in production on October 29. Rust `POSITION_CHANGE` payloads now carry the producer's actual wallet coverage state; the engine excludes unverified coverage from new prospective copy opportunities. Rust persists `COVERAGE_CHANGE` receipts/outbox markers at startup, disconnect and subscribe. A disconnect degrades watched wallets until a validated reseed; reconnecting does **not** imply missing fills were recovered. The Python projection now rejects corrupt snapshots, nonconsecutive source sequences, expired cursors and malformed payloads without advancing consumer offsets. New feed-gap markers also make previously known-flat wallets and active positions unavailable until fresh snapshots establish their coverage. Previously recorded opportunity decisions and outcome labels are immutable and were not rewritten.
+
+Release checks: 119 Rust tests passed, `cargo fmt --check` and strict Clippy passed; companion Python suite passed 185 tests with Ruff and targeted type checks. Live startup and subscription coverage markers were confirmed in the source ledger, and the Rust tracker and Python ensemble resumed with no runtime errors and zero consumer lag at inspection. The evaluator continued to attach recent hypothetical marks without generating new repeated `NO_COPY` labels. Read-only health now reports backlog age, outbox integrity, disk pressure and minute-price limitations. **Legacy unmeasured source gaps, wallet independence, executable PnL and predictive alpha remain NOT QUALIFIED.** Production stays observational: no orders, calibrated edge or live sizing authority.
+
+## Event-driven research cutover verified, 2026-10-13 11:07 UTC
+
+**Production research migration completed:** live Rust tracker and Python ensemble remained online; the ensemble now records only supported price checkpoints to `market-reference.db`, no new per-minute consensus cuts or six-horizon forward-outcome records. A bounded historical seed copied 184,675 as-known prices from the preceding ~28h with original timestamps. Archived `prospective-research.db` stopped growing at **885,037 signal cuts**, **5,075,083 forward outcomes** and last cut **11:04:00 UTC**; the count was unchanged at least through 11:07 UTC. Current `market-reference.db` had **185,271 prices** by 11:07, continuing to grow independently. The event-driven `CopyOpportunity` collector and event outcome evaluator run against that price store; the old raw signed-fill `copytrade-outcomes.service` is **disabled**, and its 675MB+ historic database is preserved. Existing Telegram consensus remains descriptive. The earlier 1278-minute observation gap and exhausted VPS swap are unresolved host/evidence risks. No predictive model, executable PnL, wallet sizing, or automatic trade authority was qualified or enabled. See [migration evidence](evidence/DI-event-driven-migration-2026-10-13.md).
+
+## Descriptive production activation, 2026-10-13 10:14 UTC
+
+The new causal copy-opportunity shadow services, bounded research collector, read-only agent decision capsule/board, and a **twice-daily descriptive Telegram digest** are running in production as *observational infrastructure*. First digest received Telegram acceptance at **2026-10-13 10:10:04 UTC**, without a trade/size recommendation. Production source/journal cursor matched at **238,547** on inspection, with **528** opportunity records, **2,414** hypothetical outcome labels, and **264** matched market controls. The collector's mode identity is pinned to PROSPECTIVE_SHADOW_ONLY; retrospective replay cannot retroactively rewrite these live records. All three original services and three new timers active; persistent memory budgets installed. **172 tests pass; Ruff/ty clean; engine release commits `a3412f7` and `96163bd`.** However host swap was exhausted (~0 MiB free) and the 1278-minute historical scoring gap remains. Cluster independence, live expert skill calibration, executable-price/fill PnL, untouched predictive validation, and financial execution are **NOT QUALIFIED**; the old grade-based Telegram engine is unchanged. Production capability is therefore **DESCRIPTIVE_ONLY**, not an approved trading signal. See [deployment evidence](evidence/DI-production-activation-2026-10-13.md).
+
+## DI0–DI7 shadow implementation status, 2026-10-13 UTC
+
+The companion Python engine now implements and tests an **independent shadow-only** `CopyOpportunity` journal, typed trade interpretation, hypothetical latency/cost markouts, a one-hour lagged-momentum comparator, bounded temporal deduplication study, prior-day-shrunk wallet research summaries, a compact read-only health capsule, CLI inspection, and sealed/hash-verified NDJSON archival. **166 tests pass** with Ruff and `ty` clean. A full source-ledger *retrospective* replay produced 31,561 wallet-level opportunity records from 232,509 durable event rows; those are NOT independent alpha observations. A 1h exploratory comparison had only 15 nonoverlapping coin/time buckets from one UTC day and remains INCONCLUSIVE. A **separate shadow-only source timer and outcome timer** were enabled at approximately 2026-10-13 06:55 UTC with 256/384 MiB MemoryMax and no order/Telegram calls; their first runs completed successfully. The opportunity timer started at ledger cursor 232,911 and had recorded 12 candidate decisions by 06:57 UTC. The new Telegram copy-opportunity adapter has **not** been deployed. Research labels remain hypothetical mids with assumed costs, not broker execution. Host OOM remediation, native Parquet, live source/cluster integration, production storage sparsification and untouched forward signal qualification remain BLOCKED/PARTIAL. The canonical verification capsule is [DI0-DI7 evidence](evidence/DI0-DI7-shadow-foundation-2026-10-13.md). Proposed end-state remains [DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md) and its dependency plan.
+
+## Live audit and design boundary, 2026-10-13 UTC
+
+Read-only inspection on the production VPS found user-systemd tracker, Python ensemble and outcome services active with an as-known research recorder in `DESCRIPTIVE_ONLY_NOT_ER4_QUALIFIED` state. The runtime continued writing one-minute consensus cuts (approximately 830,621 at the later inspection, 215 configured wallets, 203 provisional clusters). A historical observational ledger query counted 57,233 `POSITION_CHANGE` events: ADD 29,475; REDUCE 24,220; OPEN 1,762; CLOSE 1,746; FLIP 30. These are **position events**, not independent trading strategies or automatically copyable entries. The raw outcome recorder uses `sign(delta)` on source transitions, including reductions; its return is a source *execution-flow markout*, not a live-trade copy PnL. Production `runtime.py` still computes descriptive target scores; research-grade `wallet_evidence.py`, `execution_annotations.py` and `ensemble_evidence.py` implementations are not demonstrated as the live policy.
+
+Scored decision-minute data was absent between **2026-10-11 17:27 UTC and 2026-10-12 14:45 UTC** (~21h18m); journal logs contain OOM kills of all three user services on October 11. A causal diagnosis of whether memory, a process limit or another resource caused the prolonged gap has **not** been completed; service health after restart does not retroactively fill that coverage. Prospective-research SQLite was ~2.5 GiB during the Oct 13 audit. Source coverage, pipeline correctness and resource isolation are the first next implementation gates.
+
+A new cross-cutting copy-opportunity / agent-intelligence architecture is **PROPOSED IN DOCS ONLY** in [DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md); no new code, runtime policy, broker execution authority, or empirically qualified wallet alpha follows from that design. Existing earlier ER0-ER6 status and evidence below are historical and not overwritten by this later observation.
+
+
+
+## ER0 implementation: source/state authority, 2026-10-06
+
+ER0 (#31) is **ENGINEERING_PASS / LIVE_SOURCE_CAPSULE_BLOCKED** on the milestone branch. Rust now durably accepts watched trades before publishing state, commits all watched-wallet projections of one economic trade atomically, includes source time in trade identity, and serializes reconciliation publication against live fills. Rust reconciliation also emits durable `ACCOUNT_SNAPSHOT` events with current positions and account equity. The companion Python engine revision `b443a5a` consumes those snapshots, no longer polls `clearinghouseState` as a competing state writer, preserves full instrument IDs, and keeps partial-history open ages unknown.
+
+Verification: tracker `make check-rs` passes (98 Rust unit tests, 11 adversarial-observation tests, 9 crash-recovery tests); companion engine passes Ruff, `ty`, and **81 tests**. The existing local observation ledger was inspected read-only but has `current_seq = 0`, so no real source receipt-to-projection capsule or latency/coverage qualification is claimed. See [ER0 evidence](evidence/execution-review/ER0-source-state-authority.md). No deployment, financial execution, or predictive promotion was performed.
+
+ER1 (#25) is now **ENGINEERING_PASS** in companion engine revision `79d3e5c`: raw signed quantity is the additive primitive; event time controls horizon membership while knowledge time controls visibility; net/gross flow is accumulated before one common normalization anchor; stale/missing equity preserves raw flow while normalized flow is unavailable. The engine passes Ruff, `ty`, and **88 tests**. See [ER1 evidence](evidence/execution-review/ER1-additive-path.md).
+
+ER2 (#26) is **ENGINEERING_PASS / NATIVE-LIVE-SOURCE-BLOCKED** in companion engine revision `4c537a4`: native references remain observed-only, inferred segments are deterministic optional annotations, and mixed/two-sided activity abstains from a directional story. The engine passes Ruff, `ty`, and **97 tests**. See [ER2 evidence](evidence/execution-review/ER2-execution-annotations.md).
+
+ER3 (#27) is **ENGINEERING_PASS / LIVE-COVERAGE-MEASUREMENT-BLOCKED** in companion engine revision `1da1321`: coherent minute cuts carry all revisions/watermarks, material interrupts coalesce to the latest contribution, normalized wallet flow is bounded before fixed cluster budgets, and missing mass is not silently reallocated. The engine passes Ruff, `ty`, and **101 tests**. See [ER3 evidence](evidence/execution-review/ER3-coherent-cuts.md).
+
+ER4 (#28) is **PROTOCOL_ENGINEERING_PASS / EMPIRICAL_EVALUATION_BLOCKED** in companion engine revision `f3ae0be`: R0/R1/R2 are frozen, direction-before-cost outcome semantics and price-lateness censoring are qualified, and absent/immature prospective data returns BLOCKED rather than promotion. The engine full suite passes **106 tests**. See [ER4 evidence](evidence/execution-review/ER4-representation-experiment.md).
+
+ER5 (#29) is **PROTOCOL_ENGINEERING_PASS / NEW-HOLDOUT-BLOCKED** in companion engine revision `ae7cfe6`: Stage 2 is separated from ER4, registers 60s/300s/hybrid/exposure-event clocks, uses an as-known common grid plus chronological target-change replay, and blocks when no new untouched holdout exists. The engine full suite passes **111 tests**. See [ER5 evidence](evidence/execution-review/ER5-cadence-universe.md).
+
+ER6 (#30) is **DESCRIPTIVE ENGINEERING COMPLETE / PREDICTIVE QUALIFICATION BLOCKED**: companion engine qualification logic separates engineering, descriptive, historical-predictive, live-forward, production-advisory, and financial-execution authority. With ER4/ER5 prospectively blocked, predictive emission stays disabled, no policy is promoted, expected-return calibration is unavailable, and financial execution remains forbidden. The companion engine passes Ruff, focused `ty`, and **115 tests**. See [ER6 decision](evidence/execution-review/ER6-qualification-decision.md).
+
+All ER0-ER6 implementation/protocol slices in milestone #3 are now materialized on the milestone branch. Empirical gates that require future recorded observations remain BLOCKED by design; they must not be converted into production or predictive claims merely because the implementation issues are complete.
+
+## Latest inspection: execution and sampling review, 2026-10-06
+
+Tracker HEAD inspected: `2f948f81094cfb18fa2799eb1dcce5c748973148`. Expert-engine HEAD inspected: `ef8d7c19f4bfdf76b86d35827145679ae9d1c346`. Both working trees were clean before the documentation-only review. The accessible tracker checkout was `/home/quant/dev/hyperliquid-trader-tracker`; the supplied `/home/dev/hyperliquid-trader-tracker` path was outside the connector's allowed roots.
+
+`PYTHONDONTWRITEBYTECODE=1 uv run --frozen --no-sync pytest -q -p no:cacheprovider` passed **79 engine tests in 3.57s**. No Rust suite, live deployment health, complete wallet roster, measured cluster count, or predictive-performance validation was run in this review.
+
+The current runtime still computes V1 equal-wallet consensus rather than running the V2 evidence pipeline. V2 descriptive functions exist, but optional order/program metadata, execution segmentation, materiality and aligned live evidence cuts remain unqualified. Code inspection also identified live durability error-handling risks, competing snapshot/projection authority, missing-flow ambiguity, namespace loss and outcome/cost composition risks. These are documented findings, not claims of reproduced production incidents; see [EXECUTION-REVIEW section 2](EXECUTION-REVIEW.md#2-verified-repository-findings-and-implications).
+
+The [V2 evidence index](evidence/v2/INDEX.md) retains V26 INCONCLUSIVE, V29 REJECTED / ENGINEERING_PASS and V30/V31 NOT_ACTIVATED. No new predictive promotion is supported by this inspection. The next recommended frontier is correctness qualification, additive path evidence, then registered representation/cadence experiments. Proposed design changes are recorded in [EXECUTION-REVIEW](EXECUTION-REVIEW.md) and [plan.md](../plan.md); they are not implementation authorization.
+
+## Earlier V2 baseline inspection
+
 **Inspection:** 2026-10-06. **Historical V1 baseline:** `ffff331aa0f52e299ee995e2c96246c1253712a7`. **Current tracker head inspected for V2:** `9b55228`. **Current expert-engine head inspected for V2:** `bf88f7a`.
 
 This page records code inspection, not a running-service health check. The fork is `hzminhzz/hyperliquid-trader-tracker`; its VPS checkout is `/home/quant/dev/hyperliquid-trader-tracker`. The separate scoring application is `/home/quant/dev/hyperliquid-expert-ensemble`. At the V2 inspection both checkouts matched their `origin/main`; the tracker also had an `upstream` remote for KonScanner. Recheck these facts before implementation.
@@ -61,7 +147,7 @@ The official [rate-limit reference](https://hyperliquid.gitbook.io/hyperliquid-d
 
 The official [Info reference](https://hyperliquid.gitbook.io/Hyperliquid-docs/for-developers/api/info-endpoint) bounds fills history, including a 10,000-fill availability limit for `userFillsByTime`. Therefore an external snapshot can repair current quantity without recovering all missed historical activity. Time pagination requires overlap and duplicate handling, particularly at equal timestamps; do not blindly increment past the last timestamp.
 
-## Current frontier
+## Historical V1 slice completion
 
 **S0 baseline qualification completed:** see [docs/evidence/Q01-baseline-manifest.md](evidence/Q01-baseline-manifest.md) for the verified evidence manifest (Q01).
 
