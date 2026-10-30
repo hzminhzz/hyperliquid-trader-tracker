@@ -1,5 +1,31 @@
 # Inspected status and implementation gaps
 
+## WP2 targeted source-admission and lifecycle hardening — 2026-10-30
+
+**Engineering verification (not source or predictive qualification):** Rust source
+snapshot admission now fails closed for malformed mixed rows, missing quantity,
+missing live-position entry price, duplicate instruments and absent valid equity;
+a legitimate empty positions array remains distinct from malformed state.
+Source receipt/transition write failures abort the WebSocket frame and require
+a durable gap marker before reconnect. Failed snapshot receipt/commit
+quarantines existing wallet state instead of retaining a false trusted tag.
+
+The separate Python research engine versions new shadow opportunity decisions
+as DI2-shadow-v2. An actual CLOSE/FLIP appends invalidation to all still-open
+matching wallet/instrument/direction entries regardless of ADD coalescing age
+and across earlier policy revisions. Frozen first decisions and already
+attached outcomes are not rewritten. Agent explanation and the hourly
+descriptive board project current terminal status from later updates.
+Degraded source markers become explicit knowledge-time barriers, not invented
+trader exits; pre-gap votes are excluded from the board after each barrier.
+
+Verify tests and live deployment from the current repos and user systemd units,
+not from this document. These changes do not prove a lossless REST-snapshot/
+WebSocket join, recovered missed-fill history, independent wallets, executable
+follower prices or qualified predictive alpha. Automatic long-horizon expiry
+and full follow-wallet lifecycle qualification remain separate gates.
+No execution or predictive promotion is authorized.
+
 ## Source integrity and coverage hardening verified, 2026-10-29 UTC
 
 Tracker commit `66a642d` and companion engine commits `a0eb5d7` / `945eedc` were tested and activated in production on October 29. Rust `POSITION_CHANGE` payloads now carry the producer's actual wallet coverage state; the engine excludes unverified coverage from new prospective copy opportunities. Rust persists `COVERAGE_CHANGE` receipts/outbox markers at startup, disconnect and subscribe. A disconnect degrades watched wallets until a validated reseed; reconnecting does **not** imply missing fills were recovered. The Python projection now rejects corrupt snapshots, nonconsecutive source sequences, expired cursors and malformed payloads without advancing consumer offsets. New feed-gap markers also make previously known-flat wallets and active positions unavailable until fresh snapshots establish their coverage. Previously recorded opportunity decisions and outcome labels are immutable and were not rewritten.

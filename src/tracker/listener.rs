@@ -201,11 +201,18 @@ impl Listener {
                 }
             });
         }
-        if let Some(ledger) = &self.ledger
-            && let Err(err) = ledger.record_feed_coverage("STARTUP_GAP_UNVERIFIED").await
-        {
-            tracing::error!("cannot persist startup feed gap: {err}");
-            return;
+        // Never start the feed before the initial unknown-history boundary is durable.
+        // A transient SQLite error must not turn into an apparently clean listener exit.
+        if let Some(ledger) = &self.ledger {
+            while !self.stop.is_cancelled() {
+                match ledger.record_feed_coverage("STARTUP_GAP_UNVERIFIED").await {
+                    Ok(_) => break,
+                    Err(err) => {
+                        tracing::error!("cannot persist startup feed gap; retrying: {err}");
+                        Self::sleep_or_stop(&self.stop, 5.0).await;
+                    }
+                }
+            }
         }
         self.connection_loop().await;
     }
@@ -214,21 +221,30 @@ impl Listener {
 
     async fn connection_loop(&mut self) {
         let mut backoff: f64 = 1.0;
+        let mut gap_marker_pending = false;
         while !self.stop.is_cancelled() {
+            // A persistence failure must not reconnect the source before its
+            // missing-history boundary is committed. Keep retrying under backoff.
+            if gap_marker_pending {
+                if let Some(ledger) = &self.ledger
+                    && let Err(err) = ledger
+                        .record_feed_coverage("DISCONNECTED_GAP_UNVERIFIED")
+                        .await
+                {
+                    tracing::error!("cannot persist feed gap; ingest paused: {err}");
+                    Self::sleep_or_stop(&self.stop, backoff).await;
+                    backoff = (backoff * 2.0).min(30.0);
+                    continue;
+                }
+                gap_marker_pending = false;
+            }
             // PORT NOTE: `try: ... except* Exception as eg:` → match on the Result (fixed
             // decision: `except* Exception` reconnect loop → match Err => log + backoff).
             match self.run_connection().await {
                 Ok(()) => backoff = 1.0,
                 Err(err) => {
                     if !self.feed_gap_open {
-                        if let Some(ledger) = &self.ledger
-                            && let Err(write_err) = ledger
-                                .record_feed_coverage("DISCONNECTED_GAP_UNVERIFIED")
-                                .await
-                        {
-                            tracing::error!("cannot persist feed gap: {write_err}");
-                            return;
-                        }
+                        // Stop trusting state BEFORE attempting any further ledger write.
                         // A reconnect cannot prove that no fills were missed.
                         // Only a new validated wallet snapshot can restore coverage.
                         let _gate = self.state_gate.lock().await;
@@ -238,6 +254,7 @@ impl Listener {
                             book.set_coverage_state(wallet, CoverageState::Degraded);
                         }
                         self.feed_gap_open = true;
+                        gap_marker_pending = true;
                     }
                     // PORT NOTE: Python joined `eg.exceptions` with "; " — a TaskGroup can
                     // carry BOTH loops' failures; tokio::try_join! yields only the FIRST
@@ -363,8 +380,8 @@ impl Listener {
             match msg {
                 // PORT NOTE: `raw: str | bytes` → both arms feed handle_message as bytes
                 // (json.loads accepted either; serde_json::from_slice covers both).
-                Message::Text(raw) => self.handle_message(raw.as_bytes()).await,
-                Message::Binary(raw) => self.handle_message(&raw).await,
+                Message::Text(raw) => self.handle_message(raw.as_bytes()).await?,
+                Message::Binary(raw) => self.handle_message(&raw).await?,
                 _ => {} // Ping / Pong / Close / raw Frame — control, not data
             }
         }
@@ -398,13 +415,13 @@ impl Listener {
 
     // PORT NOTE: `raw: str | bytes` → &[u8] (the union collapses; serde_json::from_slice
     // parses either arm, exactly like json.loads).
-    async fn handle_message(&mut self, raw: &[u8]) {
+    async fn handle_message(&mut self, raw: &[u8]) -> ConnResult<()> {
         // PORT NOTE: `except ValueError, TypeError: return` — PEP 758 (3.14) unparenthesized
         // multi-except (resolve.rs precedent); both cases (undecodable/bad JSON, wrong raw
         // type) collapse into from_slice's Err → return (fixed decision: failure-tolerant
         // parse, return on Err).
         let Ok(msg) = serde_json::from_slice::<Value>(raw) else {
-            return;
+            return Ok(());
         };
         // PORT NOTE: on a non-object message Python's `msg.get` raised AttributeError, which
         // escaped to the reconnect loop (a crash on malformed data); Value::get returns None
@@ -420,7 +437,7 @@ impl Listener {
                 .get("data")
                 .and_then(Value::as_array)
                 .map_or(&[][..], Vec::as_slice);
-            self.handle_trades(trades).await;
+            self.handle_trades(trades).await?;
         } else if channel == Some("allMids") {
             // PORT NOTE: `(msg.get("data") or {}).get("mids") or {}` — every falsy/absent/
             // non-object rung lands on the empty dict, making update_marks a no-op; the
@@ -433,12 +450,13 @@ impl Listener {
                 self.update_marks(mids);
             }
         }
+        Ok(())
     }
 
     /// For each public trade that touches a watched wallet, fold it in and notify.
     // PORT NOTE: `trades: list[dict[str, Any]]` → &[Value] (untyped API payloads stay Value
     // per the fixed decisions; resolve_deltas absorbs the per-trade shape checks).
-    async fn handle_trades(&mut self, trades: &[Value]) {
+    async fn handle_trades(&mut self, trades: &[Value]) -> ConnResult<()> {
         for trade in trades {
             let watchlist = self
                 .registry
@@ -476,7 +494,7 @@ impl Listener {
                     Ok(value) => value,
                     Err(err) => {
                         tracing::error!("receipt append failed; state not advanced: {err}");
-                        continue;
+                        return Err(format!("durable receipt append failed: {err}").into());
                     }
                 };
                 if duplicate {
@@ -491,7 +509,7 @@ impl Listener {
                             tracing::error!(
                                 "receipt status lookup failed; state not advanced: {err}"
                             );
-                            continue;
+                            return Err(format!("receipt lookup failed: {err}").into());
                         }
                     }
                 }
@@ -572,7 +590,7 @@ impl Listener {
                 && let Err(err) = ledger.commit_transitions(transitions).await
             {
                 tracing::error!("trade transition commit failed; state not published: {err}");
-                continue;
+                return Err(format!("durable transition commit failed: {err}").into());
             }
 
             *self.book.lock().expect("book mutex poisoned") = staged_book;
@@ -608,6 +626,7 @@ impl Listener {
                 }
             }
         }
+        Ok(())
     }
 
     /// Refresh the live mark map from an `allMids` payload (drives the notional in adds).
@@ -657,6 +676,69 @@ fn decimal_from_value(value: &Value) -> Option<Decimal> {
     Decimal::from_str(&s)
         .or_else(|_| Decimal::from_scientific(&s))
         .ok()
+}
+
+#[cfg(test)]
+mod integrity_tests {
+    use super::*;
+    use crate::notifier::LoggingSender;
+    use tempfile::tempdir;
+
+    struct OfflineInfo;
+
+    #[async_trait::async_trait]
+    impl InfoClient for OfflineInfo {
+        async fn info(&self, _body: Value) -> crate::exceptions::Result<Value> {
+            Ok(json!({}))
+        }
+    }
+
+    #[tokio::test]
+    async fn durability_failure_aborts_frame_without_publishing_or_silently_skipping() {
+        // Two failure positions: raw receipt append and the atomic transition commit.
+        for broken_table in ["receipts", "position_checkpoints"] {
+            let temp = tempdir().expect("temporary ledger directory");
+            let path = temp.path().join("observation.db");
+            let mut ledger = ObservationLedger::new(&path);
+            ledger.connect().await.expect("create source ledger");
+            rusqlite::Connection::open(&path)
+                .unwrap()
+                .execute_batch(&format!("DROP TABLE {broken_table}"))
+                .expect("inject durable store failure");
+
+            let mut registry = Registry::new();
+            registry.add_desired("0xbuyer");
+            let registry = Arc::new(Mutex::new(registry));
+            let book = Arc::new(Mutex::new(InMemoryBook::new()));
+            let notifier = Notifier::new(Arc::new(LoggingSender::default()), false);
+            let mut listener = Listener::new(
+                Settings::default(),
+                registry,
+                Arc::clone(&book),
+                notifier,
+                Arc::new(OfflineInfo),
+                None,
+            )
+            .with_ledger(Arc::new(ledger));
+            let watched_trade = json!({
+                "coin": "BTC", "side": "B", "px": "100", "sz": "2",
+                "time": 1700000000000_i64, "tid": 42,
+                "users": ["0xBUYER", "0xSELLER"]
+            });
+            let error = listener
+                .handle_trades(&[watched_trade])
+                .await
+                .expect_err("persist failure must abort the connection's current frame");
+            assert!(
+                error.to_string().contains("durable"),
+                "unexpected error: {error}"
+            );
+            assert!(
+                book.lock().unwrap().position("0xbuyer", "BTC").is_none(),
+                "a failed persisted transition must never enter the trusted book"
+            );
+        }
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

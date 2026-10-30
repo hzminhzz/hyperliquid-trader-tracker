@@ -250,6 +250,56 @@ async fn test_q03_malformed_empty_snapshot_rejected() {
 }
 
 #[tokio::test]
+async fn malformed_mixed_or_incomplete_snapshot_cannot_manufacture_flat_state() {
+    let addr = "0x2222222222222222222222222222222222";
+    let malformed = [
+        json!({
+            "marginSummary": {"accountValue": "1000"},
+            "assetPositions": [
+                {"position": {"coin": "BTC", "szi": "1", "entryPx": "100"}},
+                {"notPosition": true}
+            ]
+        }),
+        json!({
+            "marginSummary": {"accountValue": "1000"},
+            "assetPositions": [{"position": {"coin": "BTC", "entryPx": "100"}}]
+        }),
+        json!({
+            "assetPositions": [{"position": {"coin": "BTC", "szi": "1", "entryPx": "100"}}]
+        }),
+    ];
+    for response in malformed {
+        let book = Arc::new(Mutex::new(InMemoryBook::new()));
+        book.lock()
+            .unwrap()
+            .ingest(addr, "ETH", d("2"), d("50"), ts());
+        let client: Arc<dyn InfoClient> = Arc::new(MockClient { response });
+        let enricher = Enricher::new(Settings::default(), Arc::clone(&book), client);
+        assert_eq!(enricher.seed_wallet(addr).await, ReconcileOutcome::Failed);
+        let state = book.lock().unwrap();
+        assert!(state.position(addr, "ETH").is_some());
+        assert_eq!(state.coverage_state(addr), CoverageState::Quarantined);
+    }
+}
+
+#[tokio::test]
+async fn valid_empty_snapshot_is_distinct_from_malformed_position_rows() {
+    let addr = "0x2222222222222222222222222222222222";
+    let book = Arc::new(Mutex::new(InMemoryBook::new()));
+    book.lock()
+        .unwrap()
+        .ingest(addr, "ETH", d("2"), d("50"), ts());
+    let client: Arc<dyn InfoClient> = Arc::new(MockClient {
+        response: json!({"assetPositions": [], "marginSummary": {"accountValue": "1000"}}),
+    });
+    let enricher = Enricher::new(Settings::default(), Arc::clone(&book), client);
+    assert_eq!(enricher.seed_wallet(addr).await, ReconcileOutcome::Applied);
+    let state = book.lock().unwrap();
+    assert!(state.position(addr, "ETH").is_none());
+    assert_eq!(state.coverage_state(addr), CoverageState::KnownFlat);
+}
+
+#[tokio::test]
 async fn test_q03_reconciliation_race_skips_without_erasing_live_fill() {
     let book = Arc::new(Mutex::new(InMemoryBook::new()));
     let addr = "0x3333333333333333333333333333333333333333";
