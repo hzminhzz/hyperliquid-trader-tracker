@@ -548,7 +548,7 @@ impl Listener {
                         realized_pnl: s.realized_pnl,
                         revision: after_rev,
                         generation,
-                        coverage: format!("{coverage:?}"),
+                        coverage: coverage.as_wire().to_string(),
                         updated_at: Utc::now(),
                     });
                     let transition = if result.events.len() > 1 {
@@ -578,7 +578,9 @@ impl Listener {
                             "delta": fill.delta.to_string(),
                             "quantity_after": quantity_after.to_string(),
                             "avg_entry": avg_entry.map(|v| v.to_string()),
-                            "coverage": format!("{coverage:?}"),
+                            // Only a validated snapshot certifies coverage; a gap/quarantine is
+                            // published as null and marked degraded, never as a trusted state.
+                            "coverage": coverage.is_authoritative().then(|| coverage.as_wire()),
                             "px": fill.px.to_string()
                         }),
                     });
@@ -691,6 +693,90 @@ mod integrity_tests {
         async fn info(&self, _body: Value) -> crate::exceptions::Result<Value> {
             Ok(json!({}))
         }
+    }
+
+    #[tokio::test]
+    async fn position_change_outbox_carries_only_authoritative_coverage() {
+        use crate::ledger::LedgerCursor;
+        use crate::state::{Direction, PositionState};
+
+        let temp = tempdir().expect("temporary ledger directory");
+        let mut ledger = ObservationLedger::new(temp.path().join("observation.db"));
+        ledger.connect().await.expect("create source ledger");
+        let ledger = Arc::new(ledger);
+
+        let mut registry = Registry::new();
+        registry.add_desired("0xbuyer");
+        let registry = Arc::new(Mutex::new(registry));
+        let book = Arc::new(Mutex::new(InMemoryBook::new()));
+        let now = Utc::now();
+        book.lock().unwrap().reseed_wallet(
+            "0xbuyer",
+            vec![PositionState {
+                address: "0xbuyer".to_string(),
+                coin: "BTC".to_string(),
+                szi: rust_decimal::Decimal::ONE,
+                direction: Direction::Long,
+                opened_at: now,
+                last_added_at: now,
+                avg_entry: rust_decimal::Decimal::from(100),
+                entry_qty_total: rust_decimal::Decimal::ONE,
+                exit_qty: rust_decimal::Decimal::ZERO,
+                exit_notional: rust_decimal::Decimal::ZERO,
+                realized_pnl: rust_decimal::Decimal::ZERO,
+            }],
+            std::collections::HashMap::new(),
+            None,
+        );
+        let notifier = Notifier::new(Arc::new(LoggingSender::default()), false);
+        let mut listener = Listener::new(
+            Settings::default(),
+            registry,
+            Arc::clone(&book),
+            notifier,
+            Arc::new(OfflineInfo),
+            None,
+        )
+        .with_ledger(Arc::clone(&ledger));
+
+        listener
+            .handle_trades(&[json!({
+                "coin": "BTC", "side": "B", "px": "100", "sz": "1",
+                "time": 1700000000000_i64, "tid": 1,
+                "users": ["0xBUYER", "0xOTHER"]
+            })])
+            .await
+            .expect("persisted add");
+        let cursor = LedgerCursor {
+            ledger_id: ledger.ledger_id().to_string(),
+            seq: 0,
+        };
+        let events = ledger.tail(&cursor, 10).await.expect("tail").events;
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].payload["coverage"], "Seeded");
+        assert_eq!(events[0].quality, "valid");
+
+        // A feed gap cannot certify subsequent state: the payload omits coverage and the
+        // event is marked degraded instead of claiming a validated transition.
+        book.lock()
+            .unwrap()
+            .set_coverage_state("0xbuyer", CoverageState::Degraded);
+        listener
+            .handle_trades(&[json!({
+                "coin": "BTC", "side": "B", "px": "100", "sz": "1",
+                "time": 1700000000001_i64, "tid": 2,
+                "users": ["0xBUYER", "0xOTHER"]
+            })])
+            .await
+            .expect("persisted add during gap");
+        let cursor = LedgerCursor {
+            ledger_id: ledger.ledger_id().to_string(),
+            seq: 1,
+        };
+        let events = ledger.tail(&cursor, 10).await.expect("tail").events;
+        assert_eq!(events.len(), 1);
+        assert!(events[0].payload["coverage"].is_null());
+        assert_eq!(events[0].quality, "degraded");
     }
 
     #[tokio::test]

@@ -14,7 +14,7 @@ use rust_decimal::Decimal;
 use serde_json::Value;
 use tokio_rusqlite::Connection;
 
-use crate::models::AccountEquity;
+use crate::models::{AccountEquity, CoverageState};
 use crate::state::Direction;
 
 const LEDGER_SCHEMA: &str = "
@@ -101,6 +101,19 @@ pub struct CanonicalEvent {
     pub after_revision: u64,
     pub payload: Value,
     pub quality: String,
+}
+
+/// Outbox quality for a state event: `valid` only when the payload carries authoritative
+/// wallet coverage. A gap or quarantine stays `degraded` rather than certifying the state.
+fn coverage_quality(payload: &Value) -> &'static str {
+    match payload
+        .get("coverage")
+        .and_then(Value::as_str)
+        .and_then(CoverageState::from_wire)
+    {
+        Some(state) if state.is_authoritative() => "valid",
+        _ => "degraded",
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -379,6 +392,7 @@ impl ObservationLedger {
                     let event_kind = params.event_kind;
                     let instrument_id = params.instrument_id;
                     let payload_str = params.payload.to_string();
+                    let quality = coverage_quality(&params.payload);
                     let event_time_str = params.event_time.to_rfc3339();
                     let received_at_str = params.received_at.to_rfc3339();
                     let known_at = Utc::now();
@@ -452,7 +466,7 @@ impl ObservationLedger {
                             seq, event_id, schema_version, ledger_id, kind, environment,
                             instrument_id, wallet_id, event_time, received_at, known_at,
                             cause_receipt_id, before_revision, after_revision, payload, quality
-                        ) VALUES (?1, ?2, '1', ?3, ?4, 'mainnet', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 'valid')",
+                        ) VALUES (?1, ?2, '1', ?3, ?4, 'mainnet', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                         rusqlite::params![
                             seq as i64,
                             event_id,
@@ -467,6 +481,7 @@ impl ObservationLedger {
                             before_rev as i64,
                             after_rev as i64,
                             payload_str,
+                            quality,
                         ],
                     )?;
 
@@ -488,7 +503,7 @@ impl ObservationLedger {
                         before_revision: before_rev,
                         after_revision: after_rev,
                         payload,
-                        quality: "valid".to_string(),
+                        quality: quality.to_string(),
                     });
                 }
 
@@ -686,10 +701,18 @@ impl ObservationLedger {
                 "observed_at": eq.observed_at.to_rfc3339()
             })
         });
+        let coverage = checkpoints
+            .first()
+            .map(|cp| cp.coverage.clone())
+            .unwrap_or_else(|| CoverageState::KnownFlat.as_wire().to_string());
+        let quality = match CoverageState::from_wire(&coverage) {
+            Some(state) if state.is_authoritative() => "valid",
+            _ => "degraded",
+        };
         let payload = serde_json::json!({
             "positions": payload_positions,
             "equity": payload_equity,
-            "coverage": checkpoints.first().map(|cp| cp.coverage.clone()).unwrap_or_else(|| "KnownFlat".to_string()),
+            "coverage": coverage,
             "partial_history": true
         });
         let payload_str = payload.to_string();
@@ -753,7 +776,7 @@ impl ObservationLedger {
                         seq, event_id, schema_version, ledger_id, kind, environment,
                         instrument_id, wallet_id, event_time, received_at, known_at,
                         cause_receipt_id, before_revision, after_revision, payload, quality
-                    ) VALUES (?1, ?2, '1', ?3, 'ACCOUNT_SNAPSHOT', 'mainnet', ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'valid')",
+                    ) VALUES (?1, ?2, '1', ?3, 'ACCOUNT_SNAPSHOT', 'mainnet', ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                     rusqlite::params![
                         seq as i64,
                         event_id,
@@ -767,6 +790,7 @@ impl ObservationLedger {
                         before_rev as i64,
                         after_rev as i64,
                         payload_str,
+                        quality,
                     ],
                 )?;
                 tx.execute(
@@ -793,7 +817,7 @@ impl ObservationLedger {
                     before_revision: before_rev,
                     after_revision: after_rev,
                     payload: payload_for_event,
-                    quality: "valid".to_string(),
+                    quality: quality.to_string(),
                 })
             })
             .await

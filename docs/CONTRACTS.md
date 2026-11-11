@@ -61,6 +61,8 @@ Bound all queues, frame sizes, retry schedules, and storage. Durable batching is
 
 Every state-affecting event includes before/after revisions, the affected scope, cause references, state validity, and available account context. Publish typed positions and snapshots even with no Telegram recipients.
 
+`POSITION_CHANGE.payload.coverage` is a stable wire value (`Seeded`, `KnownFlat`, …) only when a validated snapshot certifies it. During a gap, quarantine, reconciling, or unseeded state the field is `null` and the event `quality` is `degraded`; the same rule applies to `ACCOUNT_SNAPSHOT`. Consumers must not treat a reconnect, a fill, or an unvalidated snapshot as restored coverage.
+
 Position data distinguishes quantity, average entry, valuation price type/time, observed-since time, actual opened-at time if known, and economic PnL provenance. Equity includes currency, account/dex scope, source field, and observation time. An account-wide value is not assumed to cover every vault, subaccount, spot balance, or builder dex.
 
 Fees/funding and verified realized PnL can arrive as later enrichment. Keep estimated gross PnL distinct from verified exchange PnL and net-after-cost PnL. Append enrichment revisions; do not alter an already-published decision or block ingestion waiting for enrichment.

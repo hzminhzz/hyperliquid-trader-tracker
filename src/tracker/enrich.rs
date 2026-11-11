@@ -171,7 +171,7 @@ impl Enricher {
                 if let (Some(ledger), Some(receipt_id)) = (&self.ledger, receipt_id) {
                     let revision = staged.state_revision(address);
                     let generation = staged.generation(address);
-                    let coverage = format!("{:?}", staged.coverage_state(address));
+                    let coverage = staged.coverage_state(address).as_wire().to_string();
                     let checkpoints = states
                         .iter()
                         .map(|state| PositionCheckpoint {

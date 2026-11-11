@@ -1,5 +1,20 @@
 # Inspected status and implementation gaps
 
+## Coverage certification tightened in Rust outbox — 2026-11-11
+
+`POSITION_CHANGE`/`ACCOUNT_SNAPSHOT` coverage is now stable wire text rather than
+Rust `Debug` formatting, and only a validated `Seeded`/`KnownFlat` state is
+published as authoritative. A degraded, quarantined, reconciling, or unseeded
+wallet emits `coverage: null` with outbox `quality: degraded`, so a reconnect or
+an unverified fill cannot certify restored history. An end-to-end Rust test drives
+receipt → transaction → outbox and checks both the authoritative and gap cases.
+
+Existing durable `COVERAGE_CHANGE` markers for startup, disconnect, and subscribe
+are unchanged. Remaining verified gaps: no read-idle liveness detection (a
+half-open socket can age without a marker), subscription error frames are ignored,
+`restore_into_book` has no production caller, and `advance_retention_floor` is not
+clamped to `current_seq`. These are documented limitations, not certified recovery.
+
 ## WP2 targeted source-admission and lifecycle hardening — 2026-10-30
 
 **Engineering verification (not source or predictive qualification):** Rust source
