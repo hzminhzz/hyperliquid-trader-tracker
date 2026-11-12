@@ -1,6 +1,14 @@
 # System design: an evidence-driven trader ensemble
 
-**Status:** target design, not implemented. Read [STATUS](STATUS.md) for inspected reality. This design retains the approved KonScanner fork as mandatory infrastructure.
+**Status:** target design with capabilities implemented to different qualification levels. Read [STATUS](STATUS.md) for inspected reality. This design retains the approved KonScanner fork as mandatory infrastructure.
+
+**Proposed execution refinement (2026-10-06):** preserve the two-process ownership model and evidence-to-policy separation. Inside the Python evidence module, an additive exposure path is the primary representation; observed orders/native programs and inferred execution segments are optional linked annotations, not prerequisite stages in a mandatory intent hierarchy. A detector failure must not remove otherwise valid quantity/state/flow evidence. Aligned evidence cuts, explicit window expiry and contribution replacement prevent child executions from becoming extra votes. [EXECUTION-REVIEW](EXECUTION-REVIEW.md) owns the detailed proposal and [plan.md](../plan.md) its proposed correctness-first sequence. No new service, per-fill agent loop or financial authority is introduced.
+
+## 2026-10-13 agent-first decision-intelligence amendment
+
+[DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md) is the normative proposed extension for trade-to-copy-opportunity semantics, as-known decision capsules, a three-way separation of wallet PnL / follower markout / market-baseline-adjusted forecasting value, and bounded agent learning. **It is not a live implementation or predictive qualification.** Maintain the adopted two-process Rust observation / Python interpretation split and the invariant that the agent is outside the execution-critical path. The account-independent *copy opportunity* is the new decision seam **between** descriptive evidence and optional qualified trade signals. It is not the same as a broker order, a signed child fill or a consensus minute.
+
+The operating optimization target is independent, executable information gained per unit of collection, compute, time, operational effort and risk. Preserve source truth -> analytic truth -> decision truth distinctly, and use every negative result to improve the system's future discriminations, not to change historical decisions.
 
 ## Purpose and optimization order
 

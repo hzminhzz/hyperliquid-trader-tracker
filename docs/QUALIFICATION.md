@@ -2,6 +2,30 @@
 
 **Status:** authoritative acceptance program for V2 signal research. Existing V1 evidence remains valid only for the claims it actually tested. In particular, software/replay tests for B2/B3/B4 do not by themselves establish predictive edge.
 
+## Proposed execution-review acceptance extension
+
+[EXECUTION-REVIEW section 9](EXECUTION-REVIEW.md#9-adversarial-acceptance-suite) adds the next-stage adversarial suite; section 10 defines the minimum experiment. Existing manifests remain historical evidence and are not silently reclassified.
+
+Before predictive research, demonstrate fail-closed live receipt/transition handling, exact dual-counterparty application, scoped snapshot/stream reconciliation, split-invariant additive flow, zero-net round trips with positive gross activity, disjoint flip legs, preserved partial exits, missing normalization, non-fresh backfill and coherent window expiry. A source must prove access to required order/program/taker fields before detector claims are permitted.
+
+Outcome qualification must reject excessive price lateness, missing availability and latency beyond the evaluation horizon. A flat market with positive costs must lose money for both long and short directions. Research qualification uses common market-time comparisons, dependence-aware uncertainty, prospective universe membership and untouched evaluation intervals for adaptive stage selection. The number of fills, OIDs or repeated wallet forecasts of the same market return cannot establish independent sample support.
+
+These are proposed additional acceptance predicates, not claims that the existing tests cover them. Their implementation follows explicit approval of the amended plan.
+
+## Copy-opportunity and resource qualification amendment, 2026-10-13
+
+A new decision-intelligence research policy cannot promote until the following reproducible tests pass on the same interface used by live/shadow/replay:
+
+- **Semantics:** long ADD/REDUCE/CLOSE and short ADD/REDUCE/CLOSE do not mechanically reverse copy direction; flip closing/opening legs are disjoint and do not double-count; liquidation/correction/unknown cause is excluded from discretionary-copy triggers; uncertainty is retained.
+- **Identity:** arbitrary source fill splitting, repeated minute cuts, child messages and Telegram retries do not inflate opportunity/independent sample counts; real separate times, price changes and position lifecycles remain causally distinct.
+- **Clocks:** entry is no earlier than observed and actionable knowledge; corrected/backfilled trades never become retroactive profitable first entries; restart and outage gaps preserve explicit invalid/unknown horizons.
+- **Economics:** raw execution-flow sign, prospective copy-entry direction and exit warnings are separately labeled; costs are deducted once per position turnover in action replay and always reduce performance; unavailable executable quotes/costs become HYPOTHETICAL/BLOCKED, not fabricated execution.
+- **Counterfactual:** paired same-instrument time/regime momentum-only controls, negative eligible periods, independence by episodes and cluster/day blocks, chronological purge, wallet universe as-known and protected holdout; reporting includes failed families and multiple tested hypotheses.
+- **Operational:** fault-injected OOM/restarts and bounded P0/P1/P2 resource isolation prove no silent observation deletion, no gap represented as fresh intent, cursor replay and accurate latency/loss alarms. Source capture remains available when research/Telegram are paused.
+- **Agent ergonomics:** one bounded inspection (<6 KiB proposed target, benchmark before binding) names deployed revisions, health per seam, actionable evidence and blockers; one explain operation reaches source records and immutable decision capsule without ad hoc SQL; one evaluation produces a sealed result, cost budget, baseline comparison and a negative outcome when unsupported. Any unimplemented interface reports PROPOSED/UNAVAILABLE.
+
+These acceptance scenarios are **new proposed gates**; this documentation edit performs no tests and does not confer IMPLEMENTED status. See [DECISION-INTELLIGENCE](DECISION-INTELLIGENCE.md).
+
 ## Q0. Evidence standard
 
 Every test or experiment produces an evidence capsule with:

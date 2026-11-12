@@ -246,6 +246,38 @@ pub enum CoverageState {
     KnownFlat,
 }
 
+impl CoverageState {
+    /// Stable ledger wire value. Consumers must never depend on `Debug` formatting.
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Unseeded => "Unseeded",
+            Self::Seeded => "Seeded",
+            Self::Reconciling => "Reconciling",
+            Self::Degraded => "Degraded",
+            Self::Quarantined => "Quarantined",
+            Self::KnownFlat => "KnownFlat",
+        }
+    }
+
+    /// Parse a persisted wire value; unknown text stays unparsed (fail closed).
+    pub fn from_wire(value: &str) -> Option<Self> {
+        match value {
+            "Unseeded" => Some(Self::Unseeded),
+            "Seeded" => Some(Self::Seeded),
+            "Reconciling" => Some(Self::Reconciling),
+            "Degraded" => Some(Self::Degraded),
+            "Quarantined" => Some(Self::Quarantined),
+            "KnownFlat" => Some(Self::KnownFlat),
+            _ => None,
+        }
+    }
+
+    /// Only a validated snapshot certifies state; everything else is missing coverage.
+    pub fn is_authoritative(self) -> bool {
+        matches!(self, Self::Seeded | Self::KnownFlat)
+    }
+}
+
 /// Observed account equity from Hyperliquid clearinghouseState.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountEquity {
@@ -302,6 +334,31 @@ mod tests {
 
     fn dec(s: &str) -> Decimal {
         Decimal::from_str(s).expect("test literal")
+    }
+
+    #[test]
+    fn coverage_wire_contract_is_stable_and_only_validated_snapshots_are_authoritative() {
+        for state in [
+            CoverageState::Unseeded,
+            CoverageState::Seeded,
+            CoverageState::Reconciling,
+            CoverageState::Degraded,
+            CoverageState::Quarantined,
+            CoverageState::KnownFlat,
+        ] {
+            assert_eq!(CoverageState::from_wire(state.as_wire()), Some(state));
+        }
+        assert_eq!(CoverageState::from_wire("Live"), None);
+        assert!(CoverageState::Seeded.is_authoritative());
+        assert!(CoverageState::KnownFlat.is_authoritative());
+        for state in [
+            CoverageState::Unseeded,
+            CoverageState::Reconciling,
+            CoverageState::Degraded,
+            CoverageState::Quarantined,
+        ] {
+            assert!(!state.is_authoritative());
+        }
     }
 
     #[test]

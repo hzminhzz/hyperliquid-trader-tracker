@@ -46,6 +46,47 @@ fn test_transition(
     }
 }
 
+#[tokio::test]
+async fn feed_gap_markers_are_durable_and_do_not_fabricate_trades() {
+    let dir = tempdir().expect("tempdir");
+    let mut ledger = ObservationLedger::new(dir.path().join("ledger.db"));
+    ledger.connect().await.expect("connect");
+    assert_eq!(
+        ledger
+            .record_feed_coverage("STARTUP_GAP_UNVERIFIED")
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        ledger
+            .record_feed_coverage("SUBSCRIBED_HISTORY_UNVERIFIED")
+            .await
+            .unwrap(),
+        2
+    );
+    let events = ledger
+        .tail(
+            &LedgerCursor {
+                ledger_id: ledger.ledger_id().to_string(),
+                seq: 0,
+            },
+            10,
+        )
+        .await
+        .expect("tail")
+        .events;
+    assert_eq!(events.len(), 2);
+    assert!(events.iter().all(|event| event.kind == "COVERAGE_CHANGE"));
+    assert!(
+        events
+            .iter()
+            .all(|event| event.payload["history_during_gap"] == "UNVERIFIED")
+    );
+    assert_eq!(events[0].payload["status"], "STARTUP_GAP_UNVERIFIED");
+    assert_eq!(events[1].payload["status"], "SUBSCRIBED_HISTORY_UNVERIFIED");
+}
+
 // --- Q05: Crash consistency & transaction boundaries -----------------------
 
 #[tokio::test]
@@ -79,6 +120,102 @@ async fn test_q05_receipt_dedup_and_crash_isolation() {
         .expect("append receipt 2");
     assert!(is_dup_2, "duplicate economic receipt must be detected");
     assert_eq!(receipt_id_2, 1);
+}
+
+#[tokio::test]
+async fn test_q05_pending_duplicate_resumes_and_multi_counterparty_commit_is_atomic() {
+    let dir = tempdir().expect("tempdir");
+    let db_path = dir.path().join("ledger.db");
+    let now = Utc::now();
+    let buyer = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let seller = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    {
+        let mut ledger = ObservationLedger::new(&db_path);
+        ledger.connect().await.expect("connect");
+        let payload = json!({"coin":"BTC","tid":77,"time":1791288000000_i64});
+        let (receipt_id, duplicate) = ledger
+            .append_receipt("ws:trades", "1791288000000:BTC:77", &payload, now)
+            .await
+            .expect("append");
+        assert!(!duplicate);
+        assert!(
+            !ledger
+                .receipt_is_committed(receipt_id)
+                .await
+                .expect("status")
+        );
+
+        // Simulate redelivery after the durable receipt append but before any transition commit.
+        let (same_id, duplicate) = ledger
+            .append_receipt("ws:trades", "1791288000000:BTC:77", &payload, now)
+            .await
+            .expect("redelivery");
+        assert!(duplicate);
+        assert_eq!(same_id, receipt_id);
+        assert!(
+            !ledger
+                .receipt_is_committed(receipt_id)
+                .await
+                .expect("pending")
+        );
+
+        let mk_cp = |address: &str, qty: &str, direction: Direction| PositionCheckpoint {
+            address: address.to_string(),
+            coin: "BTC".to_string(),
+            szi: d(qty),
+            direction,
+            avg_entry: d("60000"),
+            opened_at: now,
+            last_added_at: now,
+            realized_pnl: Decimal::ZERO,
+            revision: 1,
+            generation: 1,
+            coverage: "Live".to_string(),
+            updated_at: now,
+        };
+        let events = ledger
+            .commit_transitions(vec![
+                test_transition(
+                    receipt_id,
+                    buyer,
+                    "BTC",
+                    Some(mk_cp(buyer, "1.0", Direction::Long)),
+                    "POSITION_CHANGE",
+                    0,
+                    1,
+                ),
+                test_transition(
+                    receipt_id,
+                    seller,
+                    "BTC",
+                    Some(mk_cp(seller, "-1.0", Direction::Short)),
+                    "POSITION_CHANGE",
+                    0,
+                    1,
+                ),
+            ])
+            .await
+            .expect("atomic batch");
+        assert_eq!(events.len(), 2);
+        assert!(
+            ledger
+                .receipt_is_committed(receipt_id)
+                .await
+                .expect("committed")
+        );
+    }
+
+    // Restart from durable state: both wallet perspectives survive together.
+    let mut ledger = ObservationLedger::new(&db_path);
+    ledger.connect().await.expect("reconnect");
+    let mut book = InMemoryBook::new();
+    assert_eq!(
+        ledger.restore_into_book(&mut book).await.expect("restore"),
+        2
+    );
+    assert_eq!(book.position(buyer, "BTC").expect("buyer").szi, d("1.0"));
+    assert_eq!(book.position(seller, "BTC").expect("seller").szi, d("-1.0"));
 }
 
 #[tokio::test]

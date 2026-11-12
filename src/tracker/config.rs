@@ -132,6 +132,8 @@ pub struct Settings {
     /// Full lifecycle by default: open/add/reduce/close/flip all push. Set False to mute the
     /// exit side (reduce/close) and notify only new positions + increases.
     pub notify_reduce_close: bool,
+    /// Suppress all routine per-trade Telegram cards without affecting observation capture.
+    pub notify_trade_events: bool,
 
     // --- Authoritative close PnL (userFillsByTime lookup on close/flip) ---
     /// On a close, fetch the leg's fills once via REST and report the exchange's own summed
@@ -161,6 +163,9 @@ pub struct Settings {
     // PORT NOTE: validation_alias=AliasChoices("TELEGRAM_BOT_TOKEN", "TRACKER_TELEGRAM_BOT_TOKEN")
     // is honored in from_env(): the un-prefixed name is checked first, exactly in alias order.
     pub telegram_bot_token: Option<String>,
+    /// Allow Telegram command polling. Disable for send-only deployments that share a bot
+    /// token with another command consumer; notifications still use the configured token.
+    pub telegram_polling_enabled: bool,
     pub allowed_chat_ids: String,
     /// If set (`ADMIN_CHAT_ID`), the bot is locked to this single chat: every command,
     /// button tap, and notification is gated to it (plus any `allowed_chat_ids` entries).
@@ -186,6 +191,7 @@ impl Default for Settings {
             reconcile_interval_s: 45.0,
             reconcile_batch: 20,
             notify_reduce_close: true,
+            notify_trade_events: true,
             closed_pnl_lookup: true,
             closed_pnl_attempts: 3,
             closed_pnl_retry_delay_s: 1.0,
@@ -195,6 +201,7 @@ impl Default for Settings {
             ledger_path: PathBuf::from("observation.db"),
             desired_wallets: String::new(),
             telegram_bot_token: None,
+            telegram_polling_enabled: true,
             allowed_chat_ids: String::new(),
             admin_chat_id: String::new(),
         }
@@ -253,6 +260,9 @@ impl Settings {
         if let Some(v) = get_env("TRACKER_NOTIFY_REDUCE_CLOSE") {
             s.notify_reduce_close = parse_bool("TRACKER_NOTIFY_REDUCE_CLOSE", &v)?;
         }
+        if let Some(v) = get_env("TRACKER_NOTIFY_TRADE_EVENTS") {
+            s.notify_trade_events = parse_bool("TRACKER_NOTIFY_TRADE_EVENTS", &v)?;
+        }
         if let Some(v) = get_env("TRACKER_CLOSED_PNL_LOOKUP") {
             s.closed_pnl_lookup = parse_bool("TRACKER_CLOSED_PNL_LOOKUP", &v)?;
         }
@@ -274,6 +284,9 @@ impl Settings {
         // AliasChoices order: the un-prefixed conventional name wins over the prefixed one.
         s.telegram_bot_token =
             get_env("TELEGRAM_BOT_TOKEN").or_else(|| get_env("TRACKER_TELEGRAM_BOT_TOKEN"));
+        if let Some(v) = get_env("TRACKER_TELEGRAM_POLLING_ENABLED") {
+            s.telegram_polling_enabled = parse_bool("TRACKER_TELEGRAM_POLLING_ENABLED", &v)?;
+        }
         if let Some(v) = get_env("TRACKER_ALLOWED_CHAT_IDS") {
             s.allowed_chat_ids = v;
         }

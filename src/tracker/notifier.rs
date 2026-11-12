@@ -575,6 +575,7 @@ pub struct Notifier {
     // handing it over).
     sender: Arc<dyn MessageSender>,
     notify_reduce_close: bool,
+    notify_trade_events: bool,
     // (chat_id, address, coin) → message id of that subscriber's live position card. In memory
     // only: message ids can't be recovered after a restart, and Telegram won't edit messages
     // past its edit window anyway — a new lifecycle simply opens a fresh card. A close removes
@@ -588,8 +589,15 @@ impl Notifier {
         Self {
             sender,
             notify_reduce_close,
+            notify_trade_events: true,
             cards: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Disable routine per-trade cards while preserving all durable source observations.
+    pub fn with_trade_notifications(mut self, enabled: bool) -> Self {
+        self.notify_trade_events = enabled;
+        self
     }
 
     /// Route `event` to every `{chat_id: label}` recipient, editing each one's live card in
@@ -599,6 +607,9 @@ impl Notifier {
     // that mute now lives per-recipient in `deliver` (see `can_create_new`) so a muted exit
     // still *edits* an existing card silently — it only suppresses a *new* ping.
     pub async fn dispatch(&self, ctx: &EventContext<'_>, recipients: &HashMap<i64, String>) {
+        if !self.notify_trade_events {
+            return;
+        }
         let event = ctx.event;
         // Opens and adds may always create a fresh message; reduces/closes only when exits
         // aren't muted. Editing an existing card is always allowed — a Telegram edit is silent.
@@ -1093,6 +1104,26 @@ mod tests {
                 .push(reply_markup.is_some());
             Ok(())
         }
+    }
+
+    #[tokio::test]
+    async fn test_disabled_trade_notifications_never_send_or_edit() {
+        let sender = Arc::new(FakeSender::default());
+        let notifier = Notifier::new(sender.clone(), true).with_trade_notifications(false);
+        let rcpt = recipients(&[(1, "W")]);
+        for kind in [
+            EventKind::Open,
+            EventKind::Add,
+            EventKind::Reduce,
+            EventKind::Close,
+        ] {
+            let position_event = event(kind, "1", "2", None);
+            notifier
+                .dispatch(&ctx(&position_event, Some(10), None, None, None), &rcpt)
+                .await;
+        }
+        assert!(sender.sent.lock().unwrap().is_empty());
+        assert!(sender.edited.lock().unwrap().is_empty());
     }
 
     #[tokio::test]
